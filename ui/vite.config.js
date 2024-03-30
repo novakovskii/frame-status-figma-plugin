@@ -6,12 +6,6 @@ export default defineConfig({
   plugins: [vue(), viteSingleFile()],
   build: {
     cssCodeSplit: false,
-    assetsInlineLimit: 100000000,
-    outDir: '../',
-    rollupOptions: {
-      input: {
-        app: './ui.html',
-      },
-    },
+    assetsInlineLimit: 100000000
   }
 })
