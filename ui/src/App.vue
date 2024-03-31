@@ -1,22 +1,47 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <HelloWorld msg="Vite + Vue" />
+  <TheMain />
+  <TheFooter v-if="!stateStore.instructionCompleted || stateStore.atLeastOneFrameSelected" />
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
-}
+<script>
+  import BaseButton from './components/base_elements/BaseButton.vue'
+  import TheMain from './components/TheMain.vue'
+  import TheFooter from './components/TheFooter.vue'
+
+  import { mapStores } from 'pinia'
+  import { useStateStore } from './stores/state'
+
+  export default {
+    name: 'App',
+    components: {
+      BaseButton,
+      TheMain,
+      TheFooter
+    },
+    computed: {
+      ...mapStores(useStateStore)
+    },
+    mounted() {
+      window.addEventListener('message', (e) => {
+        let messageType = e.data.pluginMessage?.type
+        let messageData = e.data.pluginMessage?.data
+        switch (messageType) {
+          case 'setInstructionState':
+            if (messageData.instructionCompleted) this.stateStore.closeInstruction()
+            break
+          case 'setSelectionState':
+            this.stateStore.setSelectionState(messageData.atLeastOneFrameSelected)
+          break
+        }
+      })
+    }
+  }
+</script>
+
+<style>
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
 </style>
