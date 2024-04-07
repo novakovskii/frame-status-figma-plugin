@@ -1,10 +1,10 @@
 <template>
   <div class="the-footer border-top">
-    <template v-if="!stateStore.instructionCompleted">
+    <template v-if="!stateStore.instruction_completed">
       <div></div>
       <BaseButton variant="flat" ok @click="closeInstruction">Got it</BaseButton>
     </template>
-    <template v-else-if="stateStore.instructionCompleted && stateStore.atLeastOneFrameSelected && !stateStore.inEditor">
+    <template v-else-if="stateStore.instruction_completed && stateStore.atLeastOneFrameSelected && !stateStore.inEditor">
       <div>
         <BaseButton ok>Remove</BaseButton>
         <BaseButton cancel>Remove all</BaseButton>

@@ -1,17 +1,17 @@
 <template>
   <TheSearch 
-    v-if="stateStore.instructionCompleted && stateStore.atLeastOneFrameSelected && !stateStore.inEditor"
+    v-if="stateStore.instruction_completed && stateStore.atLeastOneFrameSelected && !stateStore.inEditor"
     v-model="searchValue"
   />
   <div class="the-main">
-    <div v-if="!stateStore.instructionCompleted" class="instruction">
+    <div v-if="!stateStore.instruction_completed" class="instruction">
       <img src="https://i.giphy.com/xT8qB0lNtZrloL1ahi.webp" class="instruction__image">
       <div class="instruction__text">
         <div class="instruction__title ui-l-m">Notice:</div>
         <div class="instruction__caption ui-xs-n">Track progress through statuses on your page. Choose from standard statuses or create your own unique one. Monitor who and when changed status states.</div>
       </div>
     </div>
-    <div v-else-if="stateStore.instructionCompleted && !stateStore.atLeastOneFrameSelected" class="hint">
+    <div v-else-if="stateStore.instruction_completed && !stateStore.atLeastOneFrameSelected" class="hint">
       <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="hint__image">
       <g clip-path="url(#clip0_65_622)">
       <path fill-rule="evenodd" clip-rule="evenodd" d="M12 4H16V12H32V4H36V12H44V16H36V32H44V36H36V44H32V36H16V44H12V36H4V32H12V16H4V12H12V4ZM16 32V16H32V32H16Z" fill="#D5D9EB"/>
@@ -25,12 +25,13 @@
       </svg>
       <div class="hint__caption ui-xs-n">Select at least one frame on the page, then choose status</div>
     </div>
-    <div v-else-if="stateStore.instructionCompleted && stateStore.atLeastOneFrameSelected && !stateStore.inEditor" class="statuses">
+    <div v-else-if="stateStore.instruction_completed && stateStore.atLeastOneFrameSelected && !stateStore.inEditor" class="statuses">
       <BaseChipContainer :empty="statusesDefaultFiltered.length === 0">
         <BaseChip 
           v-for="status in statusesDefaultFiltered" 
           :key="status.id"
           :name="status.name"
+          :id="status.id"
           :background="status.background"
           :color="status.color"
           :icon="status.icon"
@@ -43,6 +44,7 @@
           v-for="status in statusesCustomFiltered" 
           :key="status.id"
           :name="status.name"
+          :id="status.id"
           background="#FEEE95"
           color="#A15C07"
           icon="lni lni-star-empty"
@@ -60,7 +62,7 @@
       </div>
     </div>
   </div>
-  <TheAddStatusButton v-if="stateStore.instructionCompleted && stateStore.atLeastOneFrameSelected && !stateStore.inEditor" />
+  <TheAddStatusButton v-if="stateStore.instruction_completed && stateStore.atLeastOneFrameSelected && !stateStore.inEditor" />
 </template>
 
 <script>

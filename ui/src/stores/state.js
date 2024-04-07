@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 
 export const useStateStore = defineStore('state', {
   state: () => ({ 
-    instructionCompleted: true,
+    instruction_completed: true,
     atLeastOneFrameSelected: true,
     inEditor: false,
     defaultStatuses: [
@@ -17,7 +17,7 @@ export const useStateStore = defineStore('state', {
   }),
   actions: {
     closeInstruction() {
-      this.instructionCompleted = true
+      this.instruction_completed = true
     },
     setSelectionState(value) {
       this.atLeastOneFrameSelected = value

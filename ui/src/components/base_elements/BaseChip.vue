@@ -29,6 +29,9 @@
 <script>
   import BaseButton from './BaseButton.vue'
 
+  import { mapStores } from 'pinia'
+  import { useIconsStore } from '../../stores/icons'
+
   export default {
     name: "BaseChip",
     components: {
@@ -38,6 +41,10 @@
       name: {
         type: String,
         default: ''
+      },
+      id: {
+        type: Number,
+        default: null
       },
       icon: {
         type: String,
@@ -68,11 +75,14 @@
         default: false
       }
     },
+    computed: {
+      ...mapStores(useIconsStore),
+    },
     methods: {
       setStatus() {
         let currentDate = new Date()
-        let currentDateFormatted = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}, ${currentDate.getHours()}:${currentDate.getMinutes()}`
-        parent.postMessage({ pluginMessage: { type: "setStatus", data: { name: this.name, color: this.color, background: this.background, currentDate: currentDateFormatted } } }, "*")
+        let currentDateFormatted = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}, ${currentDate.getHours()}:${currentDate.getMinutes() < 10 ? '0': ''}${currentDate.getMinutes()}`
+        parent.postMessage({ pluginMessage: { type: "setStatus", data: { name: this.name, id: this.id, color: this.color, background: this.background, currentDate: currentDateFormatted, icon: this.iconsStore.icons[this.icon.replace('lni lni-', '')] } } }, "*")
       }
     }
   }

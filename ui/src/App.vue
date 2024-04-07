@@ -1,6 +1,6 @@
 <template>
   <TheMain />
-  <TheFooter v-if="!stateStore.instructionCompleted || stateStore.atLeastOneFrameSelected" />
+  <TheFooter v-if="!stateStore.instruction_completed || stateStore.atLeastOneFrameSelected" />
 </template>
 
 <script>
@@ -27,7 +27,7 @@
         let messageData = e.data.pluginMessage?.data
         switch (messageType) {
           case 'setInstructionState':
-            if (messageData.instructionCompleted) this.stateStore.closeInstruction()
+            if (messageData.instruction_completed) this.stateStore.closeInstruction()
             break
           case 'setSelectionState':
             this.stateStore.setSelectionState(messageData.atLeastOneFrameSelected)
