@@ -1,12 +1,9 @@
 <template>
   <div class="the-search border-bottom">
-    <label for="search">
-      <i class="lni lni-search-alt"></i>
-    </label>
-    <input 
+    <div class="the-search__icon icon icon--search"></div>
+    <input
+      class="type"
       type="text" 
-      class="ui-xs-n" 
-      id="search" 
       placeholder="Search by status" 
       autocomplete="off"
       @input="$emit('update:modelValue', $event.target.value)"
@@ -30,28 +27,28 @@
 <style scoped lang="scss">
   .the-search {
     display: flex;
-    padding: 4px;
     box-sizing: border-box;
     align-items: center;
-    height: 40px;
+    min-height: 40px;
+    position: relative;
 
-    i {
-      display: flex;
-      width: 32px;
-      height: 32px;
-      align-items: center;
-      justify-content: center;
+    &__icon {
+      position: absolute;
+      left: 0;
     }
 
     input {
-      height: 32px;
+      height: 40px;
       width: 100%;
       padding: 0;
       margin: 0;
       border: none;
+      border-radius: 2px;
+      padding-left: 32px;
 
       &:focus {
-        outline: none;
+        outline: 2px solid var(--blue);
+        outline-offset: -2px;
       }
 
       &::placeholder {

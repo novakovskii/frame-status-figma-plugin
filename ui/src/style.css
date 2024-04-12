@@ -10,99 +10,14 @@
   font-family: 'Inter';
 }
 
-.ui-xs-n {
-  font-size: 11px;
-  color: var(--color-dark);
-}
-
-.ui-l-b {
-  font-size: 13px;
-  font-weight: bold;
-  color: var(--color-dark);
-}
-
-.ui-l-m {
-  font-size: 12px;
-  font-weight: medium;
-  color: var(--color-dark);
-}
-
-.label-s-m {
-  font-size: 12px;
-  font-weight: medium;
-  color: var(--color-disabled);
-}
-
-.label-l-m {
-  font-size: 13px;
-  font-weight: medium;
-  color: var(--color-disabled);
-}
-
-.label-xl-m {
-  font-size: 14px;
-  font-weight: medium;
-  color: var(--color-disabled);
-}
-
-.label-s-b {
-  font-size: 12px;
-  font-weight: bold;
-  color: var(--color-disabled);
-}
-
-.label-l-b {
-  font-size: 13px;
-  font-weight: bold;
-  color: var(--color-disabled);
-}
-
-.label-xl-b {
-  font-size: 14px;
-  font-weight: bold;
-  color: var(--color-disabled);
-}
-
-.text-s-m {
-  font-size: 12px;
-  font-weight: medium;
-  color: var(--color-dark);
-}
-
-.text-l-m {
-  font-size: 13px;
-  font-weight: medium;
-  color: var(--color-dark);
-}
-
-.text-xl-m {
-  font-size: 14px;
-  font-weight: medium;
-  color: var(--color-dark);
-}
-
-.text-s-b {
-  font-size: 12px;
-  font-weight: bold;
-  color: var(--color-dark);
-}
-
-.text-l-b {
-  font-size: 13px;
-  font-weight: bold;
-  color: var(--color-dark);
-}
-
-.text-xl-b {
-  font-size: 14px;
-  font-weight: bold;
-  color: var(--color-dark);
-}
-
 .border-bottom {
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .border-top {
   border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.input__field:not(.input__field:focus) {
+  border: 1px solid var(--black1);
 }

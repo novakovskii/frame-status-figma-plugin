@@ -1,5 +1,14 @@
 let selectedFrames: any[]
 
+let frames_with_statuses: any
+let frames_with_statuses_str = figma.currentPage.getPluginData('frames_with_statuses')
+if (!frames_with_statuses_str.length) {
+  frames_with_statuses = {}
+  figma.currentPage.setPluginData('frames_withStatuses', JSON.stringify(frames_with_statuses))
+} else {
+  frames_with_statuses = JSON.parse(frames_with_statuses_str)
+}
+
 function setSelectionState() {
   selectedFrames = []
   let atLeastOneFrameSelected = Boolean(figma.currentPage.selection.reduce((acc, item) => {
@@ -11,9 +20,23 @@ function setSelectionState() {
   if (figma.ui) figma.ui.postMessage({ type: "setSelectionState", data: {atLeastOneFrameSelected} })
 }
 
-// figma.currentPage.on("nodechange", (event) => { 
-//   console.log(event)
-// })
+figma.currentPage.on("nodechange", (event) => { 
+  for (let change of event.nodeChanges) {
+    if (!frames_with_statuses[change.id] || change.type !== 'PROPERTY_CHANGE') return
+    let isFrameMoved = Boolean(change.properties.reduce((acc, item) => {
+      return acc + Number(item === 'x' || item === 'y')
+    }, 0))
+    if (isFrameMoved) {
+      figma.getNodeByIdAsync(frames_with_statuses[change.id].status_bar_id)
+        .then(node => {
+          if (node && 'x' in node && 'y' in node && 'x' in change.node && 'y' in change.node) {
+            node.x = change.node.x + change.node.width - node.width
+            node.y = change.node.y - 60
+          }
+        })
+    }
+  }
+})
 
 
 figma.clientStorage.getAsync('instruction_completed')
@@ -35,7 +58,7 @@ figma.clientStorage.getAsync('instruction_completed')
 
       switch (msg.type) {
 
-        case 'closeInstruction':
+        case 'completeInstruction':
           figma.clientStorage.setAsync('instruction_completed', true)
           break
 
@@ -71,8 +94,9 @@ figma.clientStorage.getAsync('instruction_completed')
                 }
               }
 
-              let existingStatusBarId = frame.getPluginData('status-bar-id')
-              if (existingStatusBarId.length > 0) {
+              let existingStatusBarId = frames_with_statuses[frame.id]?.status_bar_id
+
+              if (existingStatusBarId !== undefined) {
                 figma.getNodeByIdAsync(existingStatusBarId)
                   .then(node => {
                     if (node) node.remove()
@@ -80,8 +104,6 @@ figma.clientStorage.getAsync('instruction_completed')
               }
 
               const statusBar = figma.createFrame()
-              statusBar.x = frame.x
-              statusBar.y = frame.y - 60
               statusBar.resize(1, 36)
               statusBar.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }]
               statusBar.layoutMode = 'HORIZONTAL'
@@ -119,10 +141,11 @@ figma.clientStorage.getAsync('instruction_completed')
               statusName.fills = [{ type: 'SOLID', color }]
               statusName.fontName = { family: "Inter", style: "Semi Bold" }
 
-              const userName = figma.createText()
-              userName.characters = figma.currentUser?.name ?? 'unidentified user'
-              userName.fontSize = 14
-              userName.fills = [{ type: 'SOLID', color: { r: 119/255, g: 120/255, b: 124/255 } }]
+              const userNameNode = figma.createText()
+              const userName = figma.currentUser?.name ?? 'unidentified user'
+              userNameNode.characters = userName
+              userNameNode.fontSize = 14
+              userNameNode.fills = [{ type: 'SOLID', color: { r: 119/255, g: 120/255, b: 124/255 } }]
 
               const currentDate = figma.createText()
               currentDate.characters = msg.data.currentDate
@@ -132,13 +155,29 @@ figma.clientStorage.getAsync('instruction_completed')
               statusTag.appendChild(icon)
               statusTag.appendChild(statusName)
               statusBar.appendChild(statusTag)
-              statusBar.appendChild(userName)
+              statusBar.appendChild(userNameNode)
               statusBar.appendChild(currentDate)
-              statusBar.expanded = false
-              
-              frame.setPluginData('status-bar-id', statusBar.id)
 
+              const group = figma.group([statusBar], figma.currentPage)
+              group.expanded = false
+              group.x = frame.x + frame.width - group.width
+              group.y = frame.y - 60
               
+              frames_with_statuses[frame.id] = {
+                status_bar_id: group.id,
+                status: {
+                  id: msg.data.id,
+                  name: msg.data.name,
+                  icon: msg.data.icon,
+                  color: msg.data.color,
+                  background: msg.data.background,
+                  user_name: userName,
+                  datetime: msg.data.currentDate
+                }
+              }
+
+              figma.currentPage.setPluginData('frames_with_statuses', JSON.stringify(frames_with_statuses))
+
             })()
             
           })

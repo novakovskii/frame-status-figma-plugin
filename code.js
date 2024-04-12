@@ -9,6 +9,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 let selectedFrames;
+let frames_with_statuses;
+let frames_with_statuses_str = figma.currentPage.getPluginData('frames_with_statuses');
+if (!frames_with_statuses_str.length) {
+    frames_with_statuses = {};
+    figma.currentPage.setPluginData('frames_withStatuses', JSON.stringify(frames_with_statuses));
+}
+else {
+    frames_with_statuses = JSON.parse(frames_with_statuses_str);
+}
 function setSelectionState() {
     selectedFrames = [];
     let atLeastOneFrameSelected = Boolean(figma.currentPage.selection.reduce((acc, item) => {
@@ -22,9 +31,24 @@ function setSelectionState() {
     if (figma.ui)
         figma.ui.postMessage({ type: "setSelectionState", data: { atLeastOneFrameSelected } });
 }
-// figma.currentPage.on("nodechange", (event) => { 
-//   console.log(event)
-// })
+figma.currentPage.on("nodechange", (event) => {
+    for (let change of event.nodeChanges) {
+        if (!frames_with_statuses[change.id] || change.type !== 'PROPERTY_CHANGE')
+            return;
+        let isFrameMoved = Boolean(change.properties.reduce((acc, item) => {
+            return acc + Number(item === 'x' || item === 'y');
+        }, 0));
+        if (isFrameMoved) {
+            figma.getNodeByIdAsync(frames_with_statuses[change.id].status_bar_id)
+                .then(node => {
+                if (node && 'x' in node && 'y' in node && 'x' in change.node && 'y' in change.node) {
+                    node.x = change.node.x + change.node.width - node.width;
+                    node.y = change.node.y - 60;
+                }
+            });
+        }
+    }
+});
 figma.clientStorage.getAsync('instruction_completed')
     .then(result => {
     figma.showUI(__html__, { height: 400 });
@@ -35,14 +59,14 @@ figma.clientStorage.getAsync('instruction_completed')
     figma.ui.postMessage({ type: "setInstructionState", data: { instruction_completed: result } });
     figma.ui.onmessage = (msg) => {
         switch (msg.type) {
-            case 'closeInstruction':
+            case 'completeInstruction':
                 figma.clientStorage.setAsync('instruction_completed', true);
                 break;
             case 'setStatus':
                 let savedSelectedFrames = selectedFrames;
                 selectedFrames.forEach(frame => {
                     (() => __awaiter(void 0, void 0, void 0, function* () {
-                        var _a, _b;
+                        var _a, _b, _c;
                         yield figma.loadFontAsync({ family: "Inter", style: "Regular" });
                         yield figma.loadFontAsync({ family: "Inter", style: "Semi Bold" });
                         let background = {
@@ -63,8 +87,8 @@ figma.clientStorage.getAsync('instruction_completed')
                                 node.children.forEach((n) => svgFill(n, color));
                             }
                         }
-                        let existingStatusBarId = frame.getPluginData('status-bar-id');
-                        if (existingStatusBarId.length > 0) {
+                        let existingStatusBarId = (_a = frames_with_statuses[frame.id]) === null || _a === void 0 ? void 0 : _a.status_bar_id;
+                        if (existingStatusBarId !== undefined) {
                             figma.getNodeByIdAsync(existingStatusBarId)
                                 .then(node => {
                                 if (node)
@@ -72,8 +96,6 @@ figma.clientStorage.getAsync('instruction_completed')
                             });
                         }
                         const statusBar = figma.createFrame();
-                        statusBar.x = frame.x;
-                        statusBar.y = frame.y - 60;
                         statusBar.resize(1, 36);
                         statusBar.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }];
                         statusBar.layoutMode = 'HORIZONTAL';
@@ -107,10 +129,11 @@ figma.clientStorage.getAsync('instruction_completed')
                         statusName.fontSize = 16;
                         statusName.fills = [{ type: 'SOLID', color }];
                         statusName.fontName = { family: "Inter", style: "Semi Bold" };
-                        const userName = figma.createText();
-                        userName.characters = (_b = (_a = figma.currentUser) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : 'unidentified user';
-                        userName.fontSize = 14;
-                        userName.fills = [{ type: 'SOLID', color: { r: 119 / 255, g: 120 / 255, b: 124 / 255 } }];
+                        const userNameNode = figma.createText();
+                        const userName = (_c = (_b = figma.currentUser) === null || _b === void 0 ? void 0 : _b.name) !== null && _c !== void 0 ? _c : 'unidentified user';
+                        userNameNode.characters = userName;
+                        userNameNode.fontSize = 14;
+                        userNameNode.fills = [{ type: 'SOLID', color: { r: 119 / 255, g: 120 / 255, b: 124 / 255 } }];
                         const currentDate = figma.createText();
                         currentDate.characters = msg.data.currentDate;
                         currentDate.fontSize = 14;
@@ -118,10 +141,25 @@ figma.clientStorage.getAsync('instruction_completed')
                         statusTag.appendChild(icon);
                         statusTag.appendChild(statusName);
                         statusBar.appendChild(statusTag);
-                        statusBar.appendChild(userName);
+                        statusBar.appendChild(userNameNode);
                         statusBar.appendChild(currentDate);
-                        statusBar.expanded = false;
-                        frame.setPluginData('status-bar-id', statusBar.id);
+                        const group = figma.group([statusBar], figma.currentPage);
+                        group.expanded = false;
+                        group.x = frame.x + frame.width - group.width;
+                        group.y = frame.y - 60;
+                        frames_with_statuses[frame.id] = {
+                            status_bar_id: group.id,
+                            status: {
+                                id: msg.data.id,
+                                name: msg.data.name,
+                                icon: msg.data.icon,
+                                color: msg.data.color,
+                                background: msg.data.background,
+                                user_name: userName,
+                                datetime: msg.data.currentDate
+                            }
+                        };
+                        figma.currentPage.setPluginData('frames_with_statuses', JSON.stringify(frames_with_statuses));
                     }))();
                 });
                 figma.currentPage.selection = savedSelectedFrames;

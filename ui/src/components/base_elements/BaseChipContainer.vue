@@ -1,6 +1,6 @@
 <template>
   <div class="base-chip-container">
-    <div v-if="empty">No results</div>
+    <div v-if="empty" class="type base-chip-container__empty-state-caption">No status found</div>
     <slot v-else />
   </div>
 </template>
@@ -22,5 +22,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+
+    &__empty-state-caption {
+      color: var(--black3);
+      text-align: center;
+      flex: 1;
+    }
   }
 </style>

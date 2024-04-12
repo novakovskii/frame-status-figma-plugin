@@ -1,42 +1,36 @@
 <template>
   <div 
-    class="base-chip ui-xs-n" 
-    :class="{'base-chip--active': active}"
+    class="base-chip" 
+    :class="{'base-chip--active': active, 'base-chip--closeable': closeable, 'base-chip--with-count': count > 0}"
     :style="{
       'color': color, 
-      'background': background,
-      'outline-color': `${background}60`
+      'background': background
     }"
+    tabindex="0"
     @click="setStatus"
   >
-    <i 
-      v-if="icon" 
-      :class="icon" 
-      :style="{
-        'font-size': `${iconSize}px`,
-        'width': `${iconSize}px`,
-        'height': `${iconSize}px`
-      }"
-    ></i>
+    <div class="base-chip__icon-wrapper" v-html="iconsStore.icons[icon]" :style="{'fill': color}"></div>
     {{ name }}
     <div v-if="count > 0" class="base-chip__count" :class="{'base-chip__count--with-padding': count > 9}">
       {{count}}
     </div>
-    <BaseButton v-if="closeable" variant="iconic" icon="lni lni-close" size="14" icon-size="8" :style="{'color': color}"></BaseButton>
+    <div 
+      v-if="closeable" 
+      class="base-chip__close-button icon-button" 
+      v-html="iconsStore.icons.close" 
+      :style="{'fill': color}" 
+      @click="remove"
+    />
   </div>
 </template>
 
 <script>
-  import BaseButton from './BaseButton.vue'
-
   import { mapStores } from 'pinia'
   import { useIconsStore } from '../../stores/icons'
+  import { useStateStore } from '../../stores/state'
 
   export default {
     name: "BaseChip",
-    components: {
-      BaseButton
-    },
     props: {
       name: {
         type: String,
@@ -50,10 +44,6 @@
         type: String,
         default: ''
       },
-      iconSize: {
-        type: Number,
-        default: 12
-      },
       color: {
         type: String,
         default: '#FFFFFF'
@@ -66,45 +56,96 @@
         type: Number,
         default: 0
       },
-      active: {
-        type: Boolean,
-        default: false
-      },
       closeable: {
         type: Boolean,
         default: false
       }
     },
     computed: {
-      ...mapStores(useIconsStore),
+      ...mapStores(useStateStore, useIconsStore),
+      active() {
+        return this.count > 0
+      }
     },
     methods: {
       setStatus() {
         let currentDate = new Date()
         let currentDateFormatted = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}, ${currentDate.getHours()}:${currentDate.getMinutes() < 10 ? '0': ''}${currentDate.getMinutes()}`
-        parent.postMessage({ pluginMessage: { type: "setStatus", data: { name: this.name, id: this.id, color: this.color, background: this.background, currentDate: currentDateFormatted, icon: this.iconsStore.icons[this.icon.replace('lni lni-', '')] } } }, "*")
+        parent.postMessage({ pluginMessage: { type: "setStatus", data: { name: this.name, id: this.id, color: this.color, background: this.background, currentDate: currentDateFormatted, icon: this.iconsStore.icons[this.icon] } } }, "*")
+      },
+      remove() {
+        this.stateStore.removeCustomStatus(this.id)
       }
     }
   }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss">
   .base-chip {
-    font-family: 'Inter';
+    height: 20px;
+    font-size: var(--font-size-xsmall);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    border-radius: 20px;
-    padding: 6px 8px;
-    cursor: default;
+    gap: 4px;
+    border-radius: 10px;
+    padding: 3px 6px;
+    cursor: pointer;
+    position: relative;
+
+    &::before {
+      content: '';
+      position: absolute;
+      width: calc(100% + 4px);
+      height: calc(100% + 4px);
+      background-color: inherit;
+      color: inherit;
+      opacity: 0.6;
+      z-index: -1;
+      border-radius: 12px;
+      display: none;
+      left: -2px;
+      top: -2px;
+    }
+
+    &__icon-wrapper {
+      width: 12px;
+      height: 12px;
+    }
 
     &--active {
-      outline: 1px solid currentColor;
+
+      &::before {
+        display: block;
+        background-color: currentColor;
+        opacity: 1;
+        width: calc(100% + 2px);
+        height: calc(100% + 2px);
+        left: -1px;
+        top: -1px;
+      }
+    }
+
+    &--closeable {
+      padding-right: 3px;
+    }
+
+    &--with-count {
+      padding-right: 3px;
     }
 
     &:hover {
-      outline: 3px solid;
+      &::before {
+        display: block;
+      }
+    }
+
+    &:active {
+      outline: 2px solid var(--blue);
+    }
+
+    &:focus {
+      outline: 2px solid var(--blue);
     }
 
     i {
@@ -124,6 +165,22 @@
 
       &--with-padding {
         padding: 0 4px;
+      }
+    }
+
+    &__close-button {
+      width: 14px !important;
+      height: 14px !important;
+      border-radius: 50% !important;
+      cursor: pointer !important;
+      
+      * {
+        filter: none !important;
+      }
+
+      svg {
+        width: 7px !important;
+        height: 7px !important;
       }
     }
   }
