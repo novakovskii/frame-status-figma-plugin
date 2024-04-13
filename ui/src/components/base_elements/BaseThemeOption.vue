@@ -76,10 +76,6 @@
       }
     }
 
-    &:active {
-      outline: 2px solid var(--blue);
-    }
-
     &:focus {
       outline: 2px solid var(--blue);
     }

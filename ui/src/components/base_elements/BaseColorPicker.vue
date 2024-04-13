@@ -2,15 +2,19 @@
   <div class="base-color-picker">
     <div v-if="title" class="base-color-picker__title type">{{ title }}</div>
     <div class="base-color-picker__wrapper">
-      <label class="base-color-picker__color-preview" :style="{'background': `#${modelValue}`}">
-        <input type="color">
+      <label class="base-color-picker__color-preview" :style="{'background': innerValue}">
+        <input 
+          type="color"
+          :value="innerValue"
+          @input="$emit('update:modelValue', $event.target.value)"  
+        >
       </label>
       <span class="base-color-picker__dash type">#</span>
       <input 
         type="text" 
         class="type"
-        :value="modelValue"
-        @input="$emit('update:modelValue', $event.target.value)"
+        :value="rawInnerValue"
+        @change="onTextInputChange"
       >
     </div>
   </div>
@@ -29,7 +33,24 @@
         default: ''
       }
     },
-    emits: ['update:modelValue']
+    emits: ['update:modelValue'],
+    computed: {
+      innerValue: {
+        get() {
+          return this.modelValue
+        }
+      },
+      rawInnerValue: {
+        get() {
+          return this.innerValue.substring(1)
+        }
+      }
+    },
+    methods: {
+      onTextInputChange(e) {
+        this.$emit('update:modelValue', `#${e.target.value}`)
+      }
+    }
   }
 </script>
 

@@ -48,8 +48,8 @@
     },
     data () {
       return {
-        backgroundValue: 'FEEE95',
-        colorValue: 'A15C07'
+        backgroundValue: '#FEEE95',
+        colorValue: '#A15C07'
       }
     }
   }

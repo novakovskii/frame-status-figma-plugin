@@ -6,6 +6,7 @@
       'color': color, 
       'background': background
     }"
+    ref="chip"
     tabindex="0"
     @click="setStatus"
   >
@@ -18,7 +19,8 @@
       v-if="closeable" 
       class="base-chip__close-button icon-button" 
       v-html="iconsStore.icons.close" 
-      :style="{'fill': color}" 
+      :style="{'fill': color}"
+      tabindex="0"
       @click="remove"
     />
   </div>
@@ -68,7 +70,10 @@
       }
     },
     methods: {
-      setStatus() {
+      setStatus(e) {
+        if (e.target !== this.$refs.chip) {
+          return
+        }
         let currentDate = new Date()
         let currentDateFormatted = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}, ${currentDate.getHours()}:${currentDate.getMinutes() < 10 ? '0': ''}${currentDate.getMinutes()}`
         parent.postMessage({ pluginMessage: { type: "setStatus", data: { name: this.name, id: this.id, color: this.color, background: this.background, currentDate: currentDateFormatted, icon: this.iconsStore.icons[this.icon] } } }, "*")
@@ -138,10 +143,6 @@
       &::before {
         display: block;
       }
-    }
-
-    &:active {
-      outline: 2px solid var(--blue);
     }
 
     &:focus {
