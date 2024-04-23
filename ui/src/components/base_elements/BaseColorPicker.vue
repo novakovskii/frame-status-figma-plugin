@@ -6,7 +6,7 @@
         <input 
           type="color"
           :value="innerValue"
-          @input="$emit('update:modelValue', $event.target.value)"  
+          @input="$emit('update:modelValue', $event.target.value.toUpperCase())"  
         >
       </label>
       <span class="base-color-picker__dash type">#</span>
@@ -48,7 +48,33 @@
     },
     methods: {
       onTextInputChange(e) {
-        this.$emit('update:modelValue', `#${e.target.value}`)
+        let inputString = e.target.value
+        let outputString = ''
+        let matchResult = null
+
+        matchResult = inputString.match(/[0-9A-F]{6}/gmi)?.[0]
+        if (matchResult) {
+          outputString = matchResult
+        } else {
+          matchResult = inputString.match(/[0-9A-F]{3}/gmi)?.[0]
+          if (matchResult) {
+            outputString = `${matchResult[0]}${matchResult[0]}${matchResult[1]}${matchResult[1]}${matchResult[2]}${matchResult[2]}`
+          } else {
+            matchResult = inputString.match(/[0-9A-F]{2}/gmi)?.[0]
+            if (matchResult) {
+              outputString = `${matchResult}${matchResult}${matchResult}`
+            } else {
+              matchResult = inputString.match(/[0-9A-F]{1}/gmi)?.[0]
+              if (matchResult) {
+                outputString = `${matchResult}${matchResult}${matchResult}${matchResult}${matchResult}${matchResult}`
+              } else {
+                // outputString = this.modelValue.substring(1)
+              }
+            }
+          }
+        }
+
+        this.$emit('update:modelValue', `#${outputString.toUpperCase()}`)
       }
     }
   }

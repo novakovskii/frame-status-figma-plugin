@@ -21,3 +21,7 @@
 .input__field:not(.input__field:focus) {
   border: 1px solid var(--black1);
 }
+
+.section-title {
+  padding: 0 !important;
+}

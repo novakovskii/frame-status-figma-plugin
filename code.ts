@@ -113,7 +113,7 @@ figma.clientStorage.getAsync('instruction_completed')
               statusBar.bottomRightRadius = 40
               statusBar.counterAxisAlignItems = 'CENTER'
               statusBar.itemSpacing = 16
-              statusBar.paddingRight = 16
+              statusBar.paddingLeft = 16
               statusBar.locked = true
     
               const statusTag = figma.createFrame()
@@ -125,8 +125,8 @@ figma.clientStorage.getAsync('instruction_completed')
               statusTag.paddingTop = 8
               statusTag.paddingBottom = 8
               statusTag.itemSpacing = 8
-              statusTag.topLeftRadius = 40
-              statusTag.topRightRadius = 0
+              statusTag.topLeftRadius = 0
+              statusTag.topRightRadius = 40
               statusTag.bottomLeftRadius = 40
               statusTag.bottomRightRadius = 40
 
@@ -154,9 +154,9 @@ figma.clientStorage.getAsync('instruction_completed')
               
               statusTag.appendChild(icon)
               statusTag.appendChild(statusName)
-              statusBar.appendChild(statusTag)
               statusBar.appendChild(userNameNode)
               statusBar.appendChild(currentDate)
+              statusBar.appendChild(statusTag)
 
               const group = figma.group([statusBar], figma.currentPage)
               group.expanded = false

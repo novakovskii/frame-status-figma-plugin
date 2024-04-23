@@ -1,9 +1,13 @@
 <template>
-  <TheModal title="Choose theme" class="the-choose-theme-modal">
+  <TheModal 
+    title="Choose theme" 
+    class="the-choose-theme-modal"
+    :ok-action="saveTheme"
+  >
     <BaseStatusBarPreview 
       :name="name"
-      :color="color"
-      :background="background"
+      :color="colorValue"
+      :background="backgroundValue"
       :icon="icon"
     />
     <div class="the-choose-theme-modal__color-picker-container">
@@ -48,8 +52,17 @@
     },
     data () {
       return {
-        backgroundValue: '#FEEE95',
-        colorValue: '#A15C07'
+        backgroundValue: '',
+        colorValue: ''
+      }
+    },
+    mounted() {
+      this.backgroundValue = this.background
+      this.colorValue = this.color
+    },
+    methods: {
+      saveTheme() {
+        this.$emit('saveTheme', {color: this.colorValue, background: this.backgroundValue})
       }
     }
   }

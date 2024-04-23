@@ -6,8 +6,7 @@
       'color': color, 
       'background': background
     }"
-    tabindex="0"
-    @click="$emit('selectTheme', {color, background})"
+    @click="$emit('selectTheme', {id, color, background})"
   >
     <input type="radio">
     Aa
@@ -18,13 +17,15 @@
   export default {
     name: "BaseThemeOption",
     props: {
+      id: {
+        type: Number,
+        default: 0
+      },
       color: {
-        type: String,
-        default: '#A15C07'
+        type: String
       },
       background: {
-        type: String,
-        default: '#FEEE95'
+        type: String
       },
       active: {
         type: Boolean,
@@ -36,8 +37,6 @@
 
 <style scoped lang="scss">
   .base-theme-option{
-    width: 24px;
-    height: 24px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -76,7 +75,7 @@
       }
     }
 
-    &:focus {
+    &:active {
       outline: 2px solid var(--blue);
     }
 

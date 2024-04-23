@@ -22,9 +22,7 @@ export const useStateStore = defineStore('state', {
       { id: 5, color: '#0E7090', background: '#A5F0FC' },
       { id: 6, color: '#B93815', background: '#F9DBAF' },
       { id: 7, color: '#3E4784', background: '#D5D9EB' },
-      { id: 8, color: '#026AA2', background: '#B9E6FE' },
-      { id: 9, color: '#6927DA', background: '#C3B5FD' },
-      { id: 10, color: '#A15C07', background: '#FBC846' }
+      { id: 8, color: '', background: '', custom: true}
     ]
   }),
   actions: {
@@ -45,6 +43,20 @@ export const useStateStore = defineStore('state', {
     },
     removeCustomStatus(id) {
       this.customStatuses.splice(this.customStatuses.map(item => item.id).indexOf(id), 1)
+    },
+    setLastThemeToCustom(color, background) {
+      let customTheme = this.themes.find(theme => theme.custom)
+      customTheme.color = color
+      customTheme.background = background
+      if (this.themes[this.themes.length - 1].id > this.themes[this.themes.length - 2].id) {
+        [this.themes[this.themes.length - 2], this.themes[this.themes.length - 1]] = [this.themes[this.themes.length - 1], this.themes[this.themes.length - 2]]
+      }
+    },
+    setLastThemeToDefault(id) {
+      if (this.themes.find(theme => theme.id === id).custom) return
+      if (this.themes[this.themes.length - 1].id < this.themes[this.themes.length - 2].id) {
+        [this.themes[this.themes.length - 2], this.themes[this.themes.length - 1]] = [this.themes[this.themes.length - 1], this.themes[this.themes.length - 2]]
+      }
     }
   },
 })

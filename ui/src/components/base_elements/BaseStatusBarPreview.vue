@@ -2,7 +2,7 @@
   <div class="base-status-bar-preview">
     <div class="base-status-bar-preview__status-bar" :style="{'background': background}">
       <div class="base-status-bar-preview__status-bar-icon-wrapper" v-html="iconsStore.icons[icon]" :style="{'fill': color}"></div>
-      <span class="type" :style="{'color': color}">{{ name }}</span>
+      <span class="base-status-bar-preview__status-bar-name type" :style="{'color': color}">{{ name }}</span>
     </div>
   </div>
 </template>
@@ -19,12 +19,10 @@
         default: 'My status'
       },
       color: {
-        type: String,
-        default: '#A15C07'
+        type: String
       },
       background: {
-        type: String,
-        default: '#FEEE95'
+        type: String
       },
       icon: {
         type: String,
@@ -47,25 +45,33 @@
     background-color: #F5F5F5;
 
     &__status-bar {
+      max-width: calc(100% - 16px);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 4px;
-      padding: 2px 12px 2px 6px;
+      padding: 4px 8px 4px 12px;
       font-size: var(--font-size-xsmall);
-      border-top-left-radius: 20px;
-      border-top-right-radius: 0;
-      border-bottom-left-radius: 20px;
-      border-bottom-right-radius: 40px;
+      border-top-right-radius: 28px;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 56px;
+      border-bottom-right-radius: 28px;
+      overflow: hidden;
     }
 
     &__status-bar-icon-wrapper {
-      width: 12px;
-      height: 12px;
+      min-width: 12px;
+      min-height: 12px;
 
       *{
         fill: inherit;
       }
+    }
+
+    &__status-bar-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 </style>

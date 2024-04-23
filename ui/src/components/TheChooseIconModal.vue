@@ -90,21 +90,29 @@
   .the-choose-icon-modal {
     
     &__icon-container {
-      display: flex;
-      flex-wrap: wrap;
+      // display: flex;
+      // flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
       padding: 10px;
       gap: 8px;
       overflow: auto;
       max-height: 100%;
+
     }
 
     &__icon {
+      aspect-ratio: 1;
 
-      &.icon-button--selected {
+      &.icon-button {
+        width: unset;
+        height: unset;
 
-        * {
-          filter: unset !important;
-          fill: #fff;
+        &--selected {
+          * {
+            filter: unset !important;
+            fill: #fff;
+          }
         }
       }
 
@@ -127,6 +135,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      grid-column: 1/7;
     }
   }
 </style>

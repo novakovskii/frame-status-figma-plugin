@@ -6,22 +6,20 @@
       'color': color, 
       'background': background
     }"
-    ref="chip"
-    tabindex="0"
     @click="setStatus"
   >
     <div class="base-chip__icon-wrapper" v-html="iconsStore.icons[icon]" :style="{'fill': color}"></div>
-    {{ name }}
+    <div class="base-chip__name">{{ name }}</div>
     <div v-if="count > 0" class="base-chip__count" :class="{'base-chip__count--with-padding': count > 9}">
       {{count}}
     </div>
     <div 
       v-if="closeable" 
+      ref="closeButton"
       class="base-chip__close-button icon-button" 
       v-html="iconsStore.icons.close" 
       :style="{'fill': color}"
-      tabindex="0"
-      @click="remove"
+      @click.stop="remove"
     />
   </div>
 </template>
@@ -71,7 +69,7 @@
     },
     methods: {
       setStatus(e) {
-        if (e.target !== this.$refs.chip) {
+        if (e.target === this.$refs.closeButton) {
           return
         }
         let currentDate = new Date()
@@ -97,6 +95,7 @@
     padding: 3px 6px;
     cursor: pointer;
     position: relative;
+    overflow: hidden;
 
     &::before {
       content: '';
@@ -113,9 +112,17 @@
       top: -2px;
     }
 
+    &__name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      height: 100%;
+      line-height: 14px;
+    }
+
     &__icon-wrapper {
-      width: 12px;
-      height: 12px;
+      min-width: 12px;
+      min-height: 12px;
     }
 
     &--active {
@@ -145,7 +152,7 @@
       }
     }
 
-    &:focus {
+    &:active:not(:has(.base-chip__close-button:active)) {
       outline: 2px solid var(--blue);
     }
 
@@ -182,6 +189,7 @@
       svg {
         width: 7px !important;
         height: 7px !important;
+        pointer-events: none;
       }
     }
   }
