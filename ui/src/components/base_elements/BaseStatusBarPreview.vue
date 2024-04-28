@@ -63,7 +63,7 @@
       min-width: 12px;
       min-height: 12px;
 
-      *{
+      * {
         fill: inherit;
       }
     }

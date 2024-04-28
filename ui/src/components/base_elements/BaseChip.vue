@@ -95,7 +95,7 @@
     padding: 3px 6px;
     cursor: pointer;
     position: relative;
-    overflow: hidden;
+    max-width: 100%;
 
     &::before {
       content: '';
@@ -123,6 +123,10 @@
     &__icon-wrapper {
       min-width: 12px;
       min-height: 12px;
+
+      * {
+        fill: inherit;
+      }
     }
 
     &--active {
