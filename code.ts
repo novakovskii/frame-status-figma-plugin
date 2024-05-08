@@ -38,27 +38,104 @@ function svgFill(node: any, color: {}) {
   }
 }
 
+async function createStatusBar(
+  status: {
+    background: { r: number, g: number, b: number },
+    color: { r: number, g: number, b: number },
+    icon: string,
+    name: string
+  },
+  userName: string,
+  currentDate: string
+) {
+  await figma.loadFontAsync({ family: "Inter", style: "Regular" })
+  await figma.loadFontAsync({ family: "Inter", style: "Semi Bold" })
+
+  const statusBarNode = figma.createFrame()
+  statusBarNode.resize(1, 36)
+  statusBarNode.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }]
+  statusBarNode.layoutMode = 'HORIZONTAL'
+  statusBarNode.topLeftRadius = 40
+  statusBarNode.topRightRadius = 40
+  statusBarNode.bottomLeftRadius = 40
+  statusBarNode.bottomRightRadius = 40
+  statusBarNode.counterAxisAlignItems = 'CENTER'
+  statusBarNode.itemSpacing = 16
+  statusBarNode.paddingLeft = 16
+  statusBarNode.locked = true
+
+  const statusTagNode = figma.createFrame()
+  statusTagNode.resize(1, 36)
+  statusTagNode.fills = [{ type: 'SOLID', color: status.background }]
+  statusTagNode.layoutMode = 'HORIZONTAL'
+  statusTagNode.paddingLeft = 16
+  statusTagNode.paddingRight = 24
+  statusTagNode.paddingTop = 8
+  statusTagNode.paddingBottom = 8
+  statusTagNode.itemSpacing = 8
+  statusTagNode.topLeftRadius = 0
+  statusTagNode.topRightRadius = 40
+  statusTagNode.bottomLeftRadius = 40
+  statusTagNode.bottomRightRadius = 40
+
+  const iconNode = figma.createNodeFromSvg(status.icon)
+  iconNode.resize(20, 20)
+  svgFill(iconNode, status.color)
+
+  const statusNameNode = figma.createText()
+  statusNameNode.characters = status.name
+  statusNameNode.fontSize = 16
+  statusNameNode.fills = [{ type: 'SOLID', color: status.color }]
+  statusNameNode.fontName = { family: "Inter", style: "Semi Bold" }
+
+  const userNameNode = figma.createText()
+  userNameNode.characters = userName
+  userNameNode.fontSize = 14
+  userNameNode.fills = [{ type: 'SOLID', color: { r: 119/255, g: 120/255, b: 124/255 } }]
+
+  const currentDateNode = figma.createText()
+  currentDateNode.characters = currentDate
+  currentDateNode.fontSize = 14
+  currentDateNode.fills = [{ type: 'SOLID', color: { r: 119/255, g: 120/255, b: 124/255 } }]
+
+  statusTagNode.appendChild(iconNode)
+  statusTagNode.appendChild(statusNameNode)
+  statusBarNode.appendChild(userNameNode)
+  statusBarNode.appendChild(currentDateNode)
+  statusBarNode.appendChild(statusTagNode)
+
+  const statusBarGroup = figma.group([statusBarNode], figma.currentPage)
+  statusBarGroup.expanded = false
+
+  return statusBarGroup
+}
+
+function positionStatusBarGroup(statusBarGroup: any, frame: any) {
+  statusBarGroup.x = frame.x + frame.width - statusBarGroup.width
+  statusBarGroup.y = frame.y - 60
+}
+
 figma.currentPage.on("nodechange", (event) => { 
   for (let change of event.nodeChanges) {
     if (!framesWithStatuses[change.id] || change.type !== 'PROPERTY_CHANGE') return
-    let isFrameMoved = change.properties.reduce((acc, item) => {
+
+    const isFrameMoved = change.properties.reduce((acc, item) => {
       return acc || item === 'x' || item === 'y'
     }, false)
-    if (isFrameMoved) {
-      let statusBarNode = framesWithStatuses[change.id].status_bar_node
-      if (statusBarNode && 'x' in change.node && 'y' in change.node) {
-        statusBarNode.x = change.node.x + change.node.width - statusBarNode.width
-        statusBarNode.y = change.node.y - 60
-      } else {
-        figma.getNodeByIdAsync(framesWithStatuses[change.id].status_bar_id)
-        .then(node => {
-          framesWithStatuses[change.id].status_bar_node = node
-          if (node && 'x' in node && 'y' in node && 'x' in change.node && 'y' in change.node) {
-            node.x = change.node.x + change.node.width - node.width
-            node.y = change.node.y - 60
-          }
-        })
-      }
+    if (!isFrameMoved) return
+    
+    const statusBarNode = framesWithStatuses[change.id].status_bar_node
+    if (statusBarNode && 'x' in change.node && 'y' in change.node) {
+      statusBarNode.x = change.node.x + change.node.width - statusBarNode.width
+      statusBarNode.y = change.node.y - 60
+    } else {
+      figma.getNodeByIdAsync(framesWithStatuses[change.id].status_bar_id)
+      .then(node => {
+        framesWithStatuses[change.id].status_bar_node = node
+        if (node && 'x' in node && 'y' in node && 'x' in change.node && 'y' in change.node) {
+          positionStatusBarGroup(node, change.node)
+        }
+      })
     }
   }
 })
@@ -75,7 +152,6 @@ figma.clientStorage.getAsync('instruction_completed')
 
 
     onSelectionChange()
-
     
 
     figma.ui.postMessage({ type: "setInstructionState", data: {instruction_completed: result} })
@@ -94,110 +170,47 @@ figma.clientStorage.getAsync('instruction_completed')
 
           selectedFrames.forEach(frame => {
 
-            (async () => {
+            let existingStatusBarId = framesWithStatuses[frame.id]?.status_bar_id
+            if (existingStatusBarId !== undefined) {
+              figma.getNodeByIdAsync(existingStatusBarId)
+                .then(node => {
+                  if (node) node.remove()
+                })
+            }
 
-              await figma.loadFontAsync({ family: "Inter", style: "Regular" })
-              await figma.loadFontAsync({ family: "Inter", style: "Semi Bold" })
-
-              let background = {
+            const status = {
+              background: {
                 r: parseInt(msg.data.background.slice(1, 3), 16) / 255,
                 g: parseInt(msg.data.background.slice(3, 5), 16) / 255,
                 b: parseInt(msg.data.background.slice(5, 7), 16) / 255
-              }
-
-              let color = {
+              },
+              color: {
                 r: parseInt(msg.data.color.slice(1, 3), 16) / 255,
                 g: parseInt(msg.data.color.slice(3, 5), 16) / 255,
                 b: parseInt(msg.data.color.slice(5, 7), 16) / 255
-              }
+              },
+              icon: msg.data.icon,
+              name: msg.data.name,
+              id: msg.data.id
+            };
 
-              
+            const userName = figma.currentUser?.name ?? 'Unidentified user';
+            const currentDate = msg.data.currentDate;
+            
+            createStatusBar(status, userName, currentDate)
+              .then((statusBarGroup) => {
+                positionStatusBarGroup(statusBarGroup, frame)
 
-              let existingStatusBarId = framesWithStatuses[frame.id]?.status_bar_id
-
-              if (existingStatusBarId !== undefined) {
-                figma.getNodeByIdAsync(existingStatusBarId)
-                  .then(node => {
-                    if (node) node.remove()
-                  })
-              }
-
-              const statusBar = figma.createFrame()
-              statusBar.resize(1, 36)
-              statusBar.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }]
-              statusBar.layoutMode = 'HORIZONTAL'
-              statusBar.topLeftRadius = 40
-              statusBar.topRightRadius = 40
-              statusBar.bottomLeftRadius = 40
-              statusBar.bottomRightRadius = 40
-              statusBar.counterAxisAlignItems = 'CENTER'
-              statusBar.itemSpacing = 16
-              statusBar.paddingLeft = 16
-              statusBar.locked = true
-    
-              const statusTag = figma.createFrame()
-              statusTag.resize(1, 36)
-              statusTag.fills = [{ type: 'SOLID', color: background }]
-              statusTag.layoutMode = 'HORIZONTAL'
-              statusTag.paddingLeft = 16
-              statusTag.paddingRight = 24
-              statusTag.paddingTop = 8
-              statusTag.paddingBottom = 8
-              statusTag.itemSpacing = 8
-              statusTag.topLeftRadius = 0
-              statusTag.topRightRadius = 40
-              statusTag.bottomLeftRadius = 40
-              statusTag.bottomRightRadius = 40
-
-              const iconContent = msg.data.icon
-              const icon = figma.createNodeFromSvg(iconContent)
-              icon.resize(20, 20)
-              svgFill(icon, color)
-
-              const statusName = figma.createText()
-              statusName.characters = msg.data.name
-              statusName.fontSize = 16
-              statusName.fills = [{ type: 'SOLID', color }]
-              statusName.fontName = { family: "Inter", style: "Semi Bold" }
-
-              const userNameNode = figma.createText()
-              const userName = figma.currentUser?.name ?? 'unidentified user'
-              userNameNode.characters = userName
-              userNameNode.fontSize = 14
-              userNameNode.fills = [{ type: 'SOLID', color: { r: 119/255, g: 120/255, b: 124/255 } }]
-
-              const currentDate = figma.createText()
-              currentDate.characters = msg.data.currentDate
-              currentDate.fontSize = 14
-              currentDate.fills = [{ type: 'SOLID', color: { r: 119/255, g: 120/255, b: 124/255 } }]
-              
-              statusTag.appendChild(icon)
-              statusTag.appendChild(statusName)
-              statusBar.appendChild(userNameNode)
-              statusBar.appendChild(currentDate)
-              statusBar.appendChild(statusTag)
-
-              const group = figma.group([statusBar], figma.currentPage)
-              group.expanded = false
-              group.x = frame.x + frame.width - group.width
-              group.y = frame.y - 60
-              
-              framesWithStatuses[frame.id] = {
-                status_bar_id: group.id,
-                status: {
-                  id: msg.data.id,
-                  name: msg.data.name,
-                  icon: msg.data.icon,
-                  color: msg.data.color,
-                  background: msg.data.background
-                },
-                user_name: userName,
-                datetime: msg.data.currentDate
-              }
-
-              figma.root.setPluginData('frames_with_statuses', JSON.stringify(framesWithStatuses))
-
-            })()
+                framesWithStatuses[frame.id] = {
+                  status_bar_id: statusBarGroup.id,
+                  status,
+                  user_name: userName,
+                  datetime: currentDate
+                }
+  
+                figma.root.setPluginData('frames_with_statuses', JSON.stringify(framesWithStatuses))
+              })
+            
             
           })
 
@@ -309,7 +322,22 @@ figma.clientStorage.getAsync('instruction_completed')
           figma.getNodeByIdAsync(framesWithStatuses[frameId].status_bar_id)
             .then(node => {
               if (!node) {
+                figma.getNodeByIdAsync(frameId)
+                  .then(frameNode => {
+                    createStatusBar(framesWithStatuses[frameId].status, framesWithStatuses[frameId].user_name, framesWithStatuses[frameId].datetime)
+                      .then((statusBarGroup) => {
+                        positionStatusBarGroup(statusBarGroup, frameNode)
 
+                        framesWithStatuses[frameId].status_bar_id = statusBarGroup.id
+                        figma.root.setPluginData('frames_with_statuses', JSON.stringify(framesWithStatuses))
+                        framesWithStatuses[frameId].status_bar_node = statusBarGroup
+                      })
+                  })
+              } else {
+                figma.getNodeByIdAsync(frameId)
+                  .then(frameNode => {
+                    positionStatusBarGroup(node, frameNode)
+                  })
               }
             })
           }

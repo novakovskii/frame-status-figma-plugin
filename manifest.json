@@ -12,9 +12,7 @@
   "networkAccess": {
     "allowedDomains": [
       "https://fonts.googleapis.com",
-      "https://fonts.gstatic.com",
-      "https://cdn.lineicons.com",
-      "https://i.giphy.com"
+      "https://fonts.gstatic.com"
     ]
   },
   "documentAccess": "dynamic-page",

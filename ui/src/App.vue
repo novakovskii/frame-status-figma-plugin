@@ -17,10 +17,10 @@
         let messageType = e.data.pluginMessage?.type
         let messageData = e.data.pluginMessage?.data
         switch (messageType) {
-          case 'setInstructionState':
-            if (messageData.instruction_completed) this.stateStore.completeInstruction()
-            else this.$router.push('/instruction')
-          break
+          // case 'setInstructionState':
+          //   if (messageData.instruction_completed) this.stateStore.completeInstruction()
+          //   else this.$router.push('/instruction')
+          // break
           case 'onSelectionChange':
             this.stateStore.onSelectionChange(messageData.atLeastOneRootFrameSelected)
             this.stateStore.setStatusesCount(messageData.statusesCount)
