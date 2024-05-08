@@ -99,6 +99,8 @@
   import { mapStores } from 'pinia'
   import { useStateStore } from '../stores/state'
   import { useIconsStore } from '../stores/icons'
+  import {v4 as uuid} from 'uuid';
+  import { toRaw } from "vue";
 
   export default {
     name: 'EditorView',
@@ -160,12 +162,15 @@
         this.stateStore.setLastThemeToDefault(theme.id)
       },
       addCustomStatus() {
+        const id = uuid();
         this.stateStore.addCustomStatus({
+          id,
           name: this.name,
           color: this.color,
           background: this.background,
           icon: this.icon
         })
+        parent.postMessage({ pluginMessage: { type: "saveCustomStatuses", data: toRaw(this.stateStore.customStatuses) } }, "*")
         this.$router.push('/')
       }
     }

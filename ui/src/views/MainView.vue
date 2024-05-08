@@ -11,6 +11,7 @@
         :background="status.background"
         :color="status.color"
         :icon="status.icon"
+        :count="stateStore.statusesCount[status.id] ? stateStore.statusesCount[status.id] : 0"
       />
     </BaseChipContainer>
     <div class="the-main--main__section-title section-title">
@@ -28,20 +29,47 @@
         :background="status.background"
         :color="status.color"
         :icon="status.icon"
+        :count="stateStore.statusesCount[status.id] ? stateStore.statusesCount[status.id] : 0"
         closeable
+        @remove="onCustomStatusRemove"
       />
     </BaseChipContainer>
     <div v-else class="type the-main--main__section-empty-state-caption">No status added</div>
   </TheMain>
   <TheFooter class="the-footer--main">
     <div class="the-footer--main__button-conainer">
-      <button class='button button--tertiary'>Remove</button>
-      <button class='button button--tertiary-destructive'>Remove all</button>
+      <button 
+        class='button button--tertiary' 
+        @click="showRemoveStatusesModal = true"
+      >Remove</button>
+      <button 
+        class='button button--tertiary-destructive' 
+        @click="showRemoveAllStatusesModal = true"
+      >Remove all</button>
     </div>
-    <div class="icon-button">
+    <div 
+      class="icon-button"
+      @click="update"
+    >
       <div class="icon icon--swap"></div>
     </div>
   </TheFooter>
+  <TheRemoveStatusesModal 
+    v-if="showRemoveStatusesModal"
+    @removeStatuses="onStatusesRemove"
+    @close="showRemoveStatusesModal = false"
+  />
+  <TheRemoveAllStatusesModal 
+    v-if="showRemoveAllStatusesModal"
+    @removeAllStatuses="onAllStatusesRemove"
+    @close="showRemoveAllStatusesModal = false"
+  />
+  <TheRemoveCustomStatusModal 
+    v-if="showRemoveCustomStatusModal"
+    :frames-with-removing-status="framesWithRemovingStatus"
+    @removeCustomStatus="onCustomStatusRemove(null, true)"
+    @close="showRemoveCustomStatusModal = false"
+  />
 </template>
 
 <script>
@@ -52,6 +80,9 @@
   import BaseChip from '../components/base_elements/BaseChip.vue'
   import { mapStores } from 'pinia'
   import { useStateStore } from '../stores/state'
+  import TheRemoveStatusesModal from '../components/TheRemoveStatusesModal.vue'
+  import TheRemoveAllStatusesModal from '../components/TheRemoveAllStatusesModal.vue'
+  import TheRemoveCustomStatusModal from '../components/TheRemoveCustomStatusModal.vue'
 
   export default {
     name: 'MainView',
@@ -60,11 +91,19 @@
       TheMain,
       TheFooter,
       BaseChipContainer,
-      BaseChip
+      BaseChip,
+      TheRemoveStatusesModal,
+      TheRemoveAllStatusesModal,
+      TheRemoveCustomStatusModal
     },
     data () {
       return {
-        searchValue: ''
+        searchValue: '',
+        showRemoveStatusesModal: false,
+        showRemoveAllStatusesModal: false,
+        showRemoveCustomStatusModal: false,
+        framesWithRemovingStatus: [],
+        removingStatusId: null
       }
     },
     computed: {
@@ -74,6 +113,34 @@
       },
       statusesCustomFiltered() {
         return this.stateStore.customStatuses.filter(status => status.name.toLowerCase().includes(this.searchValue.toLowerCase()))
+      }
+    },
+    mounted() {
+      window.addEventListener('message', (e) => {
+        let messageType = e.data.pluginMessage?.type
+        let messageData = e.data.pluginMessage?.data
+        switch (messageType) {
+          case 'sendFramesWithRemovingStatus':
+            // this.stateStore.setFramesWithRemovingStatus(messageData)
+            this.showRemoveCustomStatusModal = true
+            this.framesWithRemovingStatus = messageData
+          break
+        }
+      })
+    },
+    methods: {
+      onStatusesRemove() {
+        parent.postMessage({ pluginMessage: { type: "removeStatuses" } }, "*")
+      },
+      onAllStatusesRemove() {
+        parent.postMessage({ pluginMessage: { type: "removeAllStatuses" } }, "*")
+      },
+      onCustomStatusRemove(id, force = false) {
+        if (id) this.removingStatusId = id
+        parent.postMessage({ pluginMessage: { type: "removeCustomStatus", data: {id: this.removingStatusId, force} } }, "*")
+      },
+      update() {
+        parent.postMessage({ pluginMessage: { type: "update" } }, "*")
       }
     }
   }

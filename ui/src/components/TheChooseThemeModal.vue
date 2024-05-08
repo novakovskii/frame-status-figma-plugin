@@ -1,5 +1,5 @@
 <template>
-  <TheModal 
+  <BaseModal 
     title="Choose theme" 
     class="the-choose-theme-modal"
     :ok-action="saveTheme"
@@ -21,18 +21,18 @@
       />
     </div>
     <div class="type the-choose-theme-modal__caption">It is recommended to choose unique colors to avoid confusion with other statuses.</div>
-  </TheModal>
+  </BaseModal>
 </template>
 
 <script>
-  import TheModal from './base_elements/BaseModal.vue'
+  import BaseModal from './base_elements/BaseModal.vue'
   import BaseStatusBarPreview from './base_elements/BaseStatusBarPreview.vue'
   import BaseColorPicker from './base_elements/BaseColorPicker.vue'
 
   export default {
     name: "TheChooseThemeModal",
     components: {
-      TheModal,
+      BaseModal,
       BaseStatusBarPreview,
       BaseColorPicker
     },

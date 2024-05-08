@@ -5,6 +5,7 @@
 <script>
   import { mapStores } from 'pinia'
   import { useStateStore } from './stores/state'
+  import { toRaw } from "vue";
 
   export default {
     name: 'App',
@@ -20,13 +21,21 @@
             if (messageData.instruction_completed) this.stateStore.completeInstruction()
             else this.$router.push('/instruction')
           break
-          case 'setSelectionState':
-            this.stateStore.setSelectionState(messageData.atLeastOneFrameSelected)
-            if (this.stateStore.atLeastOneFrameSelected) {
+          case 'onSelectionChange':
+            this.stateStore.onSelectionChange(messageData.atLeastOneRootFrameSelected)
+            this.stateStore.setStatusesCount(messageData.statusesCount)
+            if (this.stateStore.atLeastOneRootFrameSelected) {
               this.$router.push('/')
             } else {
               this.$router.push('/empty')
             }
+          break
+          case 'sendCustomStatuses':
+            this.stateStore.setCustomStatuses(messageData)
+          break
+          case 'removeCustomStatus':
+            this.stateStore.removeCustomStatus(messageData.id)
+            parent.postMessage({ pluginMessage: { type: "saveCustomStatuses", data: toRaw(this.stateStore.customStatuses) } }, "*")
           break
         }
       })

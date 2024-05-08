@@ -14,22 +14,48 @@
     <div class="type the-main--empty__caption">Select at least one frame.</div>
   </TheMain>
   <TheFooter class="the-footer--empty">
-    <button class='button button--tertiary-destructive'>Remove all</button>
-    <div class="icon-button">
+    <button 
+      class='button button--tertiary-destructive'
+      @click="showRemoveAllStatusesModal = true"  
+    >Remove all</button>
+    <div 
+      class="icon-button"
+      @click="update"
+    >
       <div class="icon icon--swap"></div>
     </div>
   </TheFooter>
+  <TheRemoveAllStatusesModal 
+    v-if="showRemoveAllStatusesModal"
+    @removeAllStatuses="onAllStatusesRemove"
+    @close="showRemoveAllStatusesModal = false"
+  />
 </template>
 
 <script>
   import TheMain from '../components/TheMain.vue'
   import TheFooter from '../components/TheFooter.vue'
+  import TheRemoveAllStatusesModal from '../components/TheRemoveAllStatusesModal.vue'
 
   export default {
     name: 'EmptyView',
     components: {
       TheMain,
-      TheFooter
+      TheFooter,
+      TheRemoveAllStatusesModal
+    },
+    data () {
+      return {
+        showRemoveAllStatusesModal: false
+      }
+    },
+    methods: {
+      onAllStatusesRemove() {
+        parent.postMessage({ pluginMessage: { type: "removeAllStatuses" } }, "*")
+      },
+      update() {
+        parent.postMessage({ pluginMessage: { type: "update" } }, "*")
+      }
     }
   }
 </script>

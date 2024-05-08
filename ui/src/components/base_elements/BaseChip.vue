@@ -37,7 +37,7 @@
         default: ''
       },
       id: {
-        type: Number,
+        type: String,
         default: null
       },
       icon: {
@@ -77,7 +77,7 @@
         parent.postMessage({ pluginMessage: { type: "setStatus", data: { name: this.name, id: this.id, color: this.color, background: this.background, currentDate: currentDateFormatted, icon: this.iconsStore.icons[this.icon] } } }, "*")
       },
       remove() {
-        this.stateStore.removeCustomStatus(this.id)
+        this.$emit('remove', this.id)
       }
     }
   }

@@ -65,7 +65,7 @@
       completeInstruction() {
         this.stateStore.completeInstruction()
         parent.postMessage({ pluginMessage: { type: "completeInstruction" } }, "*")
-        if (this.stateStore.atLeastOneFrameSelected) {
+        if (this.stateStore.atLeastOneRootFrameSelected) {
           this.$router.push('/')
         } else {
           this.$router.push('/empty')

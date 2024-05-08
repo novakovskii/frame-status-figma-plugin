@@ -1,5 +1,5 @@
 <template>
-  <TheModal 
+  <BaseModal 
     title="Choose icon" 
     class="the-choose-icon-modal"
     :ok-action="saveIcon"
@@ -24,11 +24,11 @@
       </template>
       <div v-else class="type the-choose-icon-modal__empty-state-caption">No icon found</div>
     </div>
-  </TheModal>
+  </BaseModal>
 </template>
 
 <script>
-  import TheModal from './base_elements/BaseModal.vue'
+  import BaseModal from './base_elements/BaseModal.vue'
   import BaseStatusBarPreview from './base_elements/BaseStatusBarPreview.vue'
   import TheSearch from './TheSearch.vue'
   import { mapStores } from 'pinia'
@@ -37,7 +37,7 @@
   export default {
     name: "TheChooseIconModal",
     components: {
-      TheModal,
+      BaseModal,
       BaseStatusBarPreview,
       TheSearch
     },
