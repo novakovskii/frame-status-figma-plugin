@@ -105,6 +105,7 @@ async function createStatusBar(
   statusBarNode.appendChild(statusTagNode)
 
   const statusBarGroup = figma.group([statusBarNode], figma.currentPage)
+  statusBarGroup.name = 'Status'
   statusBarGroup.expanded = false
 
   return statusBarGroup

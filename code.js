@@ -96,6 +96,7 @@ function createStatusBar(status, userName, currentDate) {
         statusBarNode.appendChild(currentDateNode);
         statusBarNode.appendChild(statusTagNode);
         const statusBarGroup = figma.group([statusBarNode], figma.currentPage);
+        statusBarGroup.name = 'Status';
         statusBarGroup.expanded = false;
         return statusBarGroup;
     });
