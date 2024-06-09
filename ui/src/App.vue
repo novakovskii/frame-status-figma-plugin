@@ -21,9 +21,11 @@
           //   if (messageData.instruction_completed) this.stateStore.completeInstruction()
           //   else this.$router.push('/instruction')
           // break
+          case 'updateStatusesCount':
+            this.stateStore.setStatusesCount(messageData.statusesCount)
+          break
           case 'onSelectionChange':
             this.stateStore.onSelectionChange(messageData.atLeastOneRootFrameSelected)
-            this.stateStore.setStatusesCount(messageData.statusesCount)
             if (this.stateStore.atLeastOneRootFrameSelected) {
               this.$router.push('/')
             } else {

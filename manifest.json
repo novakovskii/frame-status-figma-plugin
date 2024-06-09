@@ -16,5 +16,8 @@
     ]
   },
   "documentAccess": "dynamic-page",
-  "permissions": ["currentuser"]
+  "permissions": ["currentuser"],
+  "relaunchButtons": [
+    {"command": "launch", "name": "Open Frame Status"}
+  ]
 }
