@@ -343,6 +343,7 @@ function createStatusBar(status, userName, currentDatetime, background = '#FFFFF
     const statusBarGroup = figma.group([statusBarNode], figma.currentPage);
     statusBarGroup.name = 'Status';
     statusBarGroup.expanded = false;
+    statusBarGroup.setPluginData('type', 'FRAME STATUS');
     return statusBarGroup;
 }
 function positionStatusBarGroup(statusBarGroup, frame) {
