@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 
 export const useStateStore = defineStore('state', {
   state: () => ({ 
-    instruction_completed: false,
+    showOnboarding: true,
     atLeastOneRootFrameSelected: false,
     defaultStatuses: [
       { name: 'Draft', id: '0', background: '#F5F5F5', color: '#475467', icon: 'write' },
@@ -34,8 +34,8 @@ export const useStateStore = defineStore('state', {
     // framesWithRemovingStatus: []
   }),
   actions: {
-    completeInstruction() {
-      this.instruction_completed = true
+    closeOnboarding() {
+      this.showOnboarding = false
     },
     onSelectionChange(value) {
       this.atLeastOneRootFrameSelected = value

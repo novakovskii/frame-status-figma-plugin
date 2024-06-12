@@ -17,14 +17,17 @@
         let messageType = e.data.pluginMessage?.type
         let messageData = e.data.pluginMessage?.data
         switch (messageType) {
-          // case 'setInstructionState':
-          //   if (messageData.instruction_completed) this.stateStore.completeInstruction()
-          //   else this.$router.push('/instruction')
-          // break
+          case 'setOnboardingState':
+            // if (!messageData.showOnboarding) this.stateStore.closeOnboarding()
+            // else {
+            //   this.$router.push('/onboarding')
+            // }
+          break
           case 'updateStatusesCount':
             this.stateStore.setStatusesCount(messageData.statusesCount)
           break
           case 'onSelectionChange':
+            // if (this.stateStore.showOnboarding) return;
             this.stateStore.onSelectionChange(messageData.atLeastOneRootFrameSelected)
             if (this.stateStore.atLeastOneRootFrameSelected) {
               this.$router.push('/')

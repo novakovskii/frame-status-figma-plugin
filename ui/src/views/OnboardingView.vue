@@ -1,24 +1,24 @@
 <template>
-  <TheMain class="the-main--instruction">
-    <img :src="pages[currentPage].image" class="the-main--instruction__image">
-    <div class="type type--large type--bold the-main--instruction__title">{{ pages[currentPage].title }}</div>
-    <div class="type the-main--instruction__caption">{{ pages[currentPage].caption }}</div>
+  <TheMain class="the-main--onboarding">
+    <img :src="pages[currentPage].image" class="the-main--onboarding__image">
+    <div class="type type--large type--bold the-main--onboarding__title">{{ pages[currentPage].title }}</div>
+    <div class="type the-main--onboarding__caption">{{ pages[currentPage].caption }}</div>
   </TheMain>
   <ThePagination 
     :current-page="currentPage"
     :page-count="pages.length"
   />
-  <TheFooter class="the-footer--instruction">
+  <TheFooter class="the-footer--onboarding">
     <button 
       v-if="currentPage > 0"
       class='button button--tertiary'
       @click="currentPage--"
     >Back</button>
-    <div class="the-footer--instruction__button-container">
+    <div class="the-footer--onboarding__button-container">
       <button 
         v-if="currentPage < pages.length - 1"
         class='button button--secondary'
-        @click="completeInstruction"
+        @click="closeOnboarding"
       >Skip</button>
       <button 
         v-if="currentPage < pages.length - 1"
@@ -28,7 +28,7 @@
       <button 
         v-else
         class='button button--primary'
-        @click="completeInstruction"
+        @click="closeOnboarding"
       >Get started</button> 
     </div>
   </TheFooter>
@@ -42,7 +42,7 @@
   import { useStateStore } from '../stores/state'
 
   export default {
-    name: 'InstructionView',
+    name: 'onboardingView',
     components: {
       TheMain,
       ThePagination,
@@ -62,9 +62,9 @@
       ...mapStores(useStateStore)
     },
     methods: {
-      completeInstruction() {
-        this.stateStore.completeInstruction()
-        parent.postMessage({ pluginMessage: { type: "completeInstruction" } }, "*")
+      closeOnboarding() {
+        this.stateStore.closeOnboarding()
+        parent.postMessage({ pluginMessage: { type: "closeOnboarding" } }, "*")
         if (this.stateStore.atLeastOneRootFrameSelected) {
           this.$router.push('/')
         } else {
@@ -76,7 +76,7 @@
 </script>
 
 <style lang="scss">
-  .the-main--instruction {
+  .the-main--onboarding {
     align-items: center;
     padding: 8px;
 
@@ -97,7 +97,7 @@
     }
   }
 
-  .the-footer--instruction {
+  .the-footer--onboarding {
     justify-content: space-between;
 
     &__button-container {

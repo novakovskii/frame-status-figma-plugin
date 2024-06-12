@@ -1,11 +1,14 @@
 "use strict";
 const pluginState = {
+    showOnboarding: true,
     selectedFrames: [],
     customStatuses: [],
     frames: new Map(),
 };
 async function loadPluginData() {
+    await loadOnboardingData();
     await loadFramesData();
+    await loadFonts();
     loadCustomStatusesData();
 }
 async function loadFramesData() {
@@ -28,6 +31,10 @@ function loadCustomStatusesData() {
         pluginState.customStatuses = JSON.parse(figma.root.getPluginData('custom_statuses'));
     }
 }
+async function loadFonts() {
+    await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
+    await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
+}
 function saveFramesData() {
     figma.root.setPluginData('frames', JSON.stringify(Object.fromEntries(Array.from(pluginState.frames.entries()).map(([key, value]) => {
         return [
@@ -41,8 +48,10 @@ function saveFramesData() {
         ];
     }))));
 }
-function loadOnboardingData() {
-    return figma.clientStorage.getAsync('instruction_completed');
+async function loadOnboardingData() {
+    const showOnboarding = await figma.clientStorage.getAsync('show_onboarding');
+    pluginState.showOnboarding =
+        showOnboarding === undefined ? true : showOnboarding;
 }
 function createUI() {
     figma.showUI(__html__, { height: 400 });
@@ -50,8 +59,8 @@ function createUI() {
 async function handleUIMessage(msg) {
     var _a, _b;
     switch (msg.type) {
-        case 'completeInstruction':
-            figma.clientStorage.setAsync('instruction_completed', true);
+        case 'closeOnboarding':
+            figma.clientStorage.setAsync('show_onboarding', false);
             break;
         case 'setStatus':
             for (const frame of pluginState.selectedFrames) {
@@ -67,16 +76,15 @@ async function handleUIMessage(msg) {
                 };
                 const userName = (_b = (_a = figma.currentUser) === null || _a === void 0 ? void 0 : _a.name) !== null && _b !== void 0 ? _b : 'Unidentified user';
                 const currentDate = msg.data.currentDate;
-                await createStatusBar(status, userName, currentDate).then((statusBarGroup) => {
-                    positionStatusBarGroup(statusBarGroup, frame);
-                    pluginState.frames.set(frame, {
-                        statusBarNode: statusBarGroup,
-                        status: status,
-                        userName: userName,
-                        datetime: currentDate,
-                    });
-                    saveFramesData();
+                const statusBarGroup = createStatusBar(status, userName, currentDate);
+                positionStatusBarGroup(statusBarGroup, frame);
+                pluginState.frames.set(frame, {
+                    statusBarNode: statusBarGroup,
+                    status: status,
+                    userName: userName,
+                    datetime: currentDate,
                 });
+                saveFramesData();
             }
             updateStatusesCount();
             break;
@@ -158,11 +166,10 @@ async function handleUIMessage(msg) {
                     positionStatusBarGroup(statusBar.statusBarNode, frame);
                 }
                 else {
-                    createStatusBar(statusBar.status, statusBar.userName, statusBar.datetime).then((statusBarGroup) => {
-                        positionStatusBarGroup(statusBarGroup, frame);
-                        pluginState.frames.get(frame).statusBarNode = statusBarGroup;
-                        saveFramesData();
-                    });
+                    const statusBarGroup = createStatusBar(statusBar.status, statusBar.userName, statusBar.datetime);
+                    positionStatusBarGroup(statusBarGroup, frame);
+                    pluginState.frames.get(frame).statusBarNode = statusBarGroup;
+                    saveFramesData();
                 }
             }
             break;
@@ -175,7 +182,7 @@ function updateStatusesCount() {
     const statusesCount = {};
     for (const frame of pluginState.selectedFrames) {
         if (pluginState.frames.has(frame)) {
-            let statusId = pluginState.frames.get(frame).status.id;
+            const statusId = pluginState.frames.get(frame).status.id;
             statusesCount[statusId]
                 ? statusesCount[statusId]++
                 : (statusesCount[statusId] = 1);
@@ -199,7 +206,8 @@ function isNodeRootFrame(node) {
     const isFrame = node.type === 'FRAME';
     const isChildOfPage = ((_a = node.parent) === null || _a === void 0 ? void 0 : _a.type) === 'PAGE';
     const isChildOfSection = ((_b = node.parent) === null || _b === void 0 ? void 0 : _b.type) === 'SECTION';
-    return isFrame && (isChildOfPage || isChildOfSection);
+    const isChildOfAutolayout = !!node.parent && 'layoutMode' in node.parent && node.parent.layoutMode !== 'NONE';
+    return isFrame && (isChildOfPage || isChildOfSection || isChildOfAutolayout);
 }
 function setupEventListeners() {
     figma.ui.onmessage = handleUIMessage;
@@ -210,7 +218,8 @@ function setupEventListeners() {
     figma.on('close', cleanup);
     figma.currentPage.on('nodechange', (event) => {
         for (const change of event.nodeChanges) {
-            const isFrameChanged = Array.from(pluginState.frames.keys())
+            const isFrameChanged = change.node.type === 'FRAME';
+            const isFrameWithStatusChanged = Array.from(pluginState.frames.keys())
                 .map((item) => item.id)
                 .includes(change.node.id);
             const isStatusBarChanged = Array.from(pluginState.frames.values())
@@ -218,19 +227,28 @@ function setupEventListeners() {
                 .includes(change.node.id);
             if (change.type === 'PROPERTY_CHANGE' && isFrameChanged) {
                 const isFrameMoved = change.properties.reduce((acc, item) => {
-                    return acc || item === 'x' || item === 'y';
+                    return acc || item === 'x' || item === 'y' || item === 'parent';
                 }, false);
                 if (isFrameMoved) {
-                    const statusBarNode = pluginState.frames.get(change.node).statusBarNode;
-                    if (statusBarNode) {
-                        if ('x' in change.node && 'y' in change.node) {
-                            positionStatusBarGroup(statusBarNode, change.node);
+                    onSelectionChange();
+                    if (isFrameWithStatusChanged) {
+                        const statusBarNode = pluginState.frames.get(change.node).statusBarNode;
+                        if (statusBarNode) {
+                            if ('x' in change.node && 'y' in change.node) {
+                                positionStatusBarGroup(statusBarNode, change.node);
+                                if (!isNodeRootFrame(change.node) && statusBarNode.visible === true) {
+                                    statusBarNode.visible = false;
+                                }
+                                else if (isNodeRootFrame(change.node) && statusBarNode.visible === false) {
+                                    statusBarNode.visible = true;
+                                }
+                            }
                         }
                     }
                 }
             }
             else if (change.type === 'DELETE') {
-                if (isFrameChanged) {
+                if (isFrameWithStatusChanged) {
                     const frame = Array.from(pluginState.frames.keys()).find((item) => item.id === change.node.id);
                     const statusBarNode = pluginState.frames.get(frame).statusBarNode;
                     if (statusBarNode)
@@ -245,13 +263,12 @@ function setupEventListeners() {
     });
 }
 async function initializePlugin() {
-    figma.root.setRelaunchData({ launch: "" });
+    addRelaunchButton();
     await loadPluginData();
-    const onboardingData = await loadOnboardingData();
     createUI();
     sendUIMessage({
-        type: 'setInstructionState',
-        data: { instruction_completed: onboardingData },
+        type: 'setOnboardingState',
+        data: { showOnboarding: pluginState.showOnboarding },
     });
     sendUIMessage({
         type: 'sendCustomStatuses',
@@ -261,15 +278,28 @@ async function initializePlugin() {
     updateStatusesCount();
     setupEventListeners();
 }
+function addRelaunchButton() {
+    figma.root.setRelaunchData({ launch: '' });
+}
 function cleanup() {
     console.log('Plugin closed');
 }
-async function createStatusBar(status, userName, currentDatetime, background = '#FFFFFF', color = '#777777') {
-    await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-    await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
+function createStatusBar(status, userName, currentDatetime, background = '#FFFFFF', color = '#777777', shadow = '#7C7C7C') {
     const statusBarNode = figma.createFrame();
     statusBarNode.resize(1, 36);
     statusBarNode.fills = [{ type: 'SOLID', color: hexToRgb(background) }];
+    const effects = [
+        {
+            type: 'DROP_SHADOW',
+            color: Object.assign(hexToRgb(shadow), { a: 0.15 }),
+            offset: { x: 0, y: 2 },
+            radius: 15,
+            spread: 0,
+            visible: true,
+            blendMode: 'NORMAL'
+        }
+    ];
+    statusBarNode.effects = effects;
     statusBarNode.layoutMode = 'HORIZONTAL';
     statusBarNode.cornerRadius = 20;
     statusBarNode.counterAxisAlignItems = 'CENTER';
@@ -321,6 +351,11 @@ function positionStatusBarGroup(statusBarGroup, frame) {
     if (parent && ((_a = statusBarGroup.parent) === null || _a === void 0 ? void 0 : _a.id) !== parent.id) {
         if ('appendChild' in parent) {
             parent.appendChild(statusBarGroup);
+            if ('layoutMode' in parent &&
+                parent.layoutMode !== 'NONE' &&
+                'layoutPositioning' in statusBarGroup) {
+                statusBarGroup.layoutPositioning = 'ABSOLUTE';
+            }
         }
     }
     statusBarGroup.x = frame.x + frame.width - statusBarGroup.width;

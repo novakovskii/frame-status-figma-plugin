@@ -1,11 +1,14 @@
 const pluginState = {
+  showOnboarding: true as boolean,
   selectedFrames: [] as any[],
   customStatuses: [] as any[],
   frames: new Map<any, any>(),
 };
 
 async function loadPluginData() {
+  await loadOnboardingData();
   await loadFramesData();
+  await loadFonts();
   loadCustomStatusesData();
 }
 
@@ -36,6 +39,11 @@ function loadCustomStatusesData() {
   }
 }
 
+async function loadFonts() {
+  await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
+  await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
+}
+
 function saveFramesData() {
   figma.root.setPluginData(
     'frames',
@@ -57,8 +65,10 @@ function saveFramesData() {
   );
 }
 
-function loadOnboardingData() {
-  return figma.clientStorage.getAsync('instruction_completed');
+async function loadOnboardingData() {
+  const showOnboarding = await figma.clientStorage.getAsync('show_onboarding');
+  pluginState.showOnboarding =
+    showOnboarding === undefined ? true : showOnboarding;
 }
 
 function createUI() {
@@ -67,8 +77,8 @@ function createUI() {
 
 async function handleUIMessage(msg: any) {
   switch (msg.type) {
-    case 'completeInstruction':
-      figma.clientStorage.setAsync('instruction_completed', true);
+    case 'closeOnboarding':
+      figma.clientStorage.setAsync('show_onboarding', false);
       break;
 
     case 'setStatus':
@@ -88,20 +98,18 @@ async function handleUIMessage(msg: any) {
         const userName = figma.currentUser?.name ?? 'Unidentified user';
         const currentDate = msg.data.currentDate;
 
-        await createStatusBar(status, userName, currentDate).then(
-          (statusBarGroup) => {
-            positionStatusBarGroup(statusBarGroup, frame);
+        const statusBarGroup = createStatusBar(status, userName, currentDate)
+        
+        positionStatusBarGroup(statusBarGroup, frame);
 
-            pluginState.frames.set(frame, {
-              statusBarNode: statusBarGroup,
-              status: status,
-              userName: userName,
-              datetime: currentDate,
-            });
+        pluginState.frames.set(frame, {
+          statusBarNode: statusBarGroup,
+          status: status,
+          userName: userName,
+          datetime: currentDate,
+        });
 
-            saveFramesData();
-          }
-        );
+        saveFramesData();
       }
 
       updateStatusesCount();
@@ -197,17 +205,17 @@ async function handleUIMessage(msg: any) {
         if (statusBar.statusBarNode) {
           positionStatusBarGroup(statusBar.statusBarNode, frame);
         } else {
-          createStatusBar(
+          const statusBarGroup = createStatusBar(
             statusBar.status,
             statusBar.userName,
             statusBar.datetime
-          ).then((statusBarGroup) => {
-            positionStatusBarGroup(statusBarGroup, frame);
+          )
+          
+          positionStatusBarGroup(statusBarGroup, frame);
 
-            pluginState.frames.get(frame).statusBarNode = statusBarGroup;
+          pluginState.frames.get(frame).statusBarNode = statusBarGroup;
 
-            saveFramesData();
-          });
+          saveFramesData();
         }
       }
       break;
@@ -223,7 +231,7 @@ function updateStatusesCount() {
 
   for (const frame of pluginState.selectedFrames) {
     if (pluginState.frames.has(frame)) {
-      let statusId = pluginState.frames.get(frame).status.id;
+      const statusId = pluginState.frames.get(frame).status.id;
       statusesCount[statusId]
         ? statusesCount[statusId]++
         : (statusesCount[statusId] = 1);
@@ -249,7 +257,8 @@ function isNodeRootFrame(node: SceneNode): boolean {
   const isFrame = node.type === 'FRAME';
   const isChildOfPage = node.parent?.type === 'PAGE';
   const isChildOfSection = node.parent?.type === 'SECTION';
-  return isFrame && (isChildOfPage || isChildOfSection);
+  const isChildOfAutolayout = !!node.parent && 'layoutMode' in node.parent && node.parent.layoutMode !== 'NONE';
+  return isFrame && (isChildOfPage || isChildOfSection || isChildOfAutolayout);
 }
 
 function setupEventListeners() {
@@ -264,7 +273,8 @@ function setupEventListeners() {
 
   figma.currentPage.on('nodechange', (event) => {
     for (const change of event.nodeChanges) {
-      const isFrameChanged = Array.from(pluginState.frames.keys())
+      const isFrameChanged = change.node.type === 'FRAME'
+      const isFrameWithStatusChanged = Array.from(pluginState.frames.keys())
         .map((item) => item.id)
         .includes(change.node.id);
       const isStatusBarChanged = Array.from(pluginState.frames.values())
@@ -273,20 +283,28 @@ function setupEventListeners() {
 
       if (change.type === 'PROPERTY_CHANGE' && isFrameChanged) {
         const isFrameMoved = change.properties.reduce((acc, item) => {
-          return acc || item === 'x' || item === 'y';
+          return acc || item === 'x' || item === 'y' || item === 'parent';
         }, false);
         if (isFrameMoved) {
-          const statusBarNode = pluginState.frames.get(
-            change.node
-          ).statusBarNode;
-          if (statusBarNode) {
-            if ('x' in change.node && 'y' in change.node) {
-              positionStatusBarGroup(statusBarNode, change.node);
+          onSelectionChange()
+          if (isFrameWithStatusChanged) {
+            const statusBarNode = pluginState.frames.get(
+              change.node
+            ).statusBarNode;
+            if (statusBarNode) {
+              if ('x' in change.node && 'y' in change.node) {
+                positionStatusBarGroup(statusBarNode, change.node);
+                if (!isNodeRootFrame(change.node) && statusBarNode.visible === true) {
+                  statusBarNode.visible = false
+                } else if (isNodeRootFrame(change.node) && statusBarNode.visible === false) {
+                  statusBarNode.visible = true
+                }
+              }
             }
           }
         }
       } else if (change.type === 'DELETE') {
-        if (isFrameChanged) {
+        if (isFrameWithStatusChanged) {
           const frame = Array.from(pluginState.frames.keys()).find(
             (item) => item.id === change.node.id
           );
@@ -304,15 +322,14 @@ function setupEventListeners() {
 }
 
 async function initializePlugin() {
-  figma.root.setRelaunchData({ launch: "" });
+  addRelaunchButton();
   await loadPluginData();
-  const onboardingData = await loadOnboardingData();
 
   createUI();
 
   sendUIMessage({
-    type: 'setInstructionState',
-    data: { instruction_completed: onboardingData },
+    type: 'setOnboardingState',
+    data: { showOnboarding: pluginState.showOnboarding },
   });
   sendUIMessage({
     type: 'sendCustomStatuses',
@@ -324,11 +341,15 @@ async function initializePlugin() {
   setupEventListeners();
 }
 
+function addRelaunchButton() {
+  figma.root.setRelaunchData({ launch: '' });
+}
+
 function cleanup() {
   console.log('Plugin closed');
 }
 
-async function createStatusBar(
+function createStatusBar(
   status: {
     background: RGB;
     color: RGB;
@@ -338,14 +359,25 @@ async function createStatusBar(
   userName: string,
   currentDatetime: string,
   background: string = '#FFFFFF',
-  color: string = '#777777'
-): Promise<GroupNode> {
-  await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-  await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
+  color: string = '#777777',
+  shadow: string = '#7C7C7C'
+): GroupNode {
 
   const statusBarNode = figma.createFrame();
   statusBarNode.resize(1, 36);
   statusBarNode.fills = [{ type: 'SOLID', color: hexToRgb(background) }];
+  const effects: DropShadowEffect[] = [
+    {
+        type: 'DROP_SHADOW',
+        color: Object.assign(hexToRgb(shadow), {a: 0.15}),
+        offset: { x: 0, y: 2 },
+        radius: 15,
+        spread: 0,
+        visible: true,
+        blendMode: 'NORMAL'
+    }
+  ];
+  statusBarNode.effects = effects;
   statusBarNode.layoutMode = 'HORIZONTAL';
   statusBarNode.cornerRadius = 20;
   statusBarNode.counterAxisAlignItems = 'CENTER';
@@ -406,6 +438,13 @@ function positionStatusBarGroup(statusBarGroup: SceneNode, frame: SceneNode) {
   if (parent && statusBarGroup.parent?.id !== parent.id) {
     if ('appendChild' in parent) {
       parent.appendChild(statusBarGroup);
+      if (
+        'layoutMode' in parent &&
+        parent.layoutMode !== 'NONE' &&
+        'layoutPositioning' in statusBarGroup
+      ) {
+        statusBarGroup.layoutPositioning = 'ABSOLUTE';
+      }
     }
   }
 
