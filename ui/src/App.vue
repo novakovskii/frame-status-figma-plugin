@@ -28,14 +28,14 @@
           break
           case 'onSelectionChange':
             // if (this.stateStore.showOnboarding) return;
-            this.stateStore.onSelectionChange(messageData.atLeastOneRootFrameSelected)
-            if (this.stateStore.atLeastOneRootFrameSelected) {
+            this.stateStore.onSelectionChange(messageData.atLeastOneValidElementSelected)
+            if (this.stateStore.atLeastOneValidElementSelected) {
               this.$router.push('/')
             } else {
               this.$router.push('/empty')
             }
           break
-          case 'sendCustomStatuses':
+          case 'setCustomStatuses':
             this.stateStore.setCustomStatuses(messageData)
           break
           case 'removeCustomStatus':

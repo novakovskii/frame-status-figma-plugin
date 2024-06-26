@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 export const useStateStore = defineStore('state', {
   state: () => ({ 
     showOnboarding: true,
-    atLeastOneRootFrameSelected: false,
+    atLeastOneValidElementSelected: false,
     defaultStatuses: [
       { name: 'Draft', id: '0', background: '#F5F5F5', color: '#475467', icon: 'write' },
       { name: 'In progress', id: '1', background: '#FEE4E2', color: '#B42318', icon: 'ruler-pencil' },
@@ -38,7 +38,7 @@ export const useStateStore = defineStore('state', {
       this.showOnboarding = false
     },
     onSelectionChange(value) {
-      this.atLeastOneRootFrameSelected = value
+      this.atLeastOneValidElementSelected = value
     },
     addCustomStatus({id, name, color, background, icon}) {
       this.customStatuses.push({

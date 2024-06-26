@@ -72,9 +72,7 @@
         if (e.target === this.$refs.closeButton) {
           return
         }
-        let currentDate = new Date()
-        let currentDateFormatted = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}, ${currentDate.getHours()}:${currentDate.getMinutes() < 10 ? '0': ''}${currentDate.getMinutes()}`
-        parent.postMessage({ pluginMessage: { type: "setStatus", data: { name: this.name, id: this.id, color: this.color, background: this.background, currentDate: currentDateFormatted, icon: this.iconsStore.icons[this.icon] } } }, "*")
+        parent.postMessage({ pluginMessage: { type: "setStatus", data: { name: this.name, id: this.id, color: this.color, background: this.background, icon: this.iconsStore.icons[this.icon] } } }, "*")
       },
       remove() {
         this.$emit('remove', this.id)

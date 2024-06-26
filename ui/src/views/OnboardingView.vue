@@ -65,7 +65,7 @@
       closeOnboarding() {
         this.stateStore.closeOnboarding()
         parent.postMessage({ pluginMessage: { type: "closeOnboarding" } }, "*")
-        if (this.stateStore.atLeastOneRootFrameSelected) {
+        if (this.stateStore.atLeastOneValidElementSelected) {
           this.$router.push('/')
         } else {
           this.$router.push('/empty')
