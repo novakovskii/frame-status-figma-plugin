@@ -27,9 +27,9 @@ function addRelaunchButton() {
     figma.root.setRelaunchData({ launch: '' });
 }
 async function loadPluginData() {
+    await loadFonts();
     await loadOnboardingData();
     await loadElementsData();
-    await loadFonts();
     loadCustomStatusesData();
 }
 async function loadOnboardingData() {
@@ -40,14 +40,15 @@ async function loadOnboardingData() {
 async function loadElementsData() {
     if (figma.root.getPluginData('elements')) {
         const elementsData = JSON.parse(figma.root.getPluginData('elements'));
-        console.log('elementsData', elementsData);
         for (const elementId in elementsData) {
             const elementNode = await figma.getNodeByIdAsync(elementId);
+            const { statusBarId, status, userName, datetime } = elementsData[elementId];
+            let statusBarNode = await figma.getNodeByIdAsync(statusBarId);
             if (elementNode) {
-                const { statusBarId, status, userName, datetime } = elementsData[elementId];
-                let statusBarNode = await figma.getNodeByIdAsync(statusBarId);
                 if (statusBarNode === null) {
                     statusBarNode = createStatusBar(status, userName, datetime);
+                    changeStatusBarNodePosition(elementNode, statusBarNode);
+                    changeStatusBarNodeParent(elementNode, statusBarNode);
                 }
                 pluginState.elements.set(elementNode, {
                     node: statusBarNode,
@@ -56,8 +57,14 @@ async function loadElementsData() {
                     datetime,
                 });
             }
+            else {
+                if (statusBarNode) {
+                    statusBarNode.remove();
+                }
+            }
         }
     }
+    saveElementsData();
 }
 async function loadFonts() {
     await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
@@ -70,11 +77,10 @@ function loadCustomStatusesData() {
 }
 function saveElementsData() {
     figma.root.setPluginData('elements', JSON.stringify(Object.fromEntries(Array.from(pluginState.elements.entries()).map(([key, value]) => {
-        var _a, _b;
         return [
             key.id,
             {
-                statusBarId: (_b = (_a = value.node) === null || _a === void 0 ? void 0 : _a.id) !== null && _b !== void 0 ? _b : null,
+                statusBarId: value.node.id,
                 status: value.status,
                 userName: value.userName,
                 datetime: value.datetime,
@@ -108,41 +114,35 @@ function updateStatusesCount() {
     sendUIMessage({ type: 'updateStatusesCount', data: { statusesCount } });
 }
 function onNodeChange(event) {
+    var _a, _b;
     for (const change of event.nodeChanges) {
         const isNodeWithStatusChanged = Array.from(pluginState.elements.keys())
             .map((item) => item.id)
             .includes(change.node.id);
-        const isStatusBarChanged = Array.from(pluginState.elements.values())
-            .map((item) => item.node.id)
-            .includes(change.node.id);
         if (isNodeWithStatusChanged) {
+            let elementNode;
+            let statusBarNode;
             switch (change.type) {
                 case 'PROPERTY_CHANGE':
+                    elementNode = change.node;
+                    statusBarNode = (_a = pluginState.elements.get(elementNode)) === null || _a === void 0 ? void 0 : _a.node;
                     const isPositionChanged = change.properties.reduce((acc, item) => {
                         return acc || item === 'x' || item === 'y';
                     }, false);
                     const isParentChanged = change.properties.includes('parent');
                     if (isPositionChanged) {
-                        // changeStatusBarNodePosition();
+                        changeStatusBarNodePosition(elementNode, statusBarNode);
                     }
                     if (isParentChanged) {
-                        // changeStatusBarNodeParent();
-                        // onSelectionChange();
+                        changeStatusBarNodeParent(elementNode, statusBarNode);
+                        onSelectionChange();
                     }
                     break;
                 case 'DELETE':
-                    // remove statusBar
-                    // remove node from plugin state Map
-                    break;
-            }
-        }
-        else if (isStatusBarChanged) {
-            switch (change.type) {
-                case 'PROPERTY_CHANGE':
-                    // position statusBar back
-                    break;
-                case 'DELETE':
-                    // create statusBar back
+                    elementNode = change.node;
+                    statusBarNode = (_b = pluginState.elements.get(elementNode)) === null || _b === void 0 ? void 0 : _b.node;
+                    statusBarNode.remove();
+                    pluginState.elements.delete(elementNode);
                     break;
             }
         }
@@ -201,18 +201,18 @@ async function handleUIMessage(msg) {
                 if (pluginState.elements.has(element)) {
                     (_d = pluginState.elements.get(element)) === null || _d === void 0 ? void 0 : _d.node.remove();
                     pluginState.elements.delete(element);
-                    updateStatusesCount();
-                    saveElementsData();
                 }
             }
+            updateStatusesCount();
+            saveElementsData();
             break;
         case 'removeAllStatuses':
             for (const element of pluginState.elements.keys()) {
                 (_e = pluginState.elements.get(element)) === null || _e === void 0 ? void 0 : _e.node.remove();
                 pluginState.elements.delete(element);
-                updateStatusesCount();
-                saveElementsData();
             }
+            updateStatusesCount();
+            saveElementsData();
             break;
         case 'removeCustomStatus':
             const elementsWithRemovingStatus = new Map();
@@ -236,9 +236,9 @@ async function handleUIMessage(msg) {
                 for (const element of elementsWithRemovingStatus.keys()) {
                     (_f = pluginState.elements.get(element)) === null || _f === void 0 ? void 0 : _f.node.remove();
                     pluginState.elements.delete(element);
-                    updateStatusesCount();
-                    saveElementsData();
                 }
+                updateStatusesCount();
+                saveElementsData();
                 return;
             }
             sendUIMessage({
@@ -279,9 +279,9 @@ async function handleUIMessage(msg) {
                     if (!statusBarNode)
                         return;
                     statusBarNode = statusBarGroup;
-                    saveElementsData();
                 }
             }
+            saveElementsData();
             break;
     }
 }

@@ -56,9 +56,9 @@ function addRelaunchButton() {
 }
 
 async function loadPluginData() {
+  await loadFonts();
   await loadOnboardingData();
   await loadElementsData();
-  await loadFonts();
   loadCustomStatusesData();
 }
 
@@ -71,14 +71,16 @@ async function loadOnboardingData() {
 async function loadElementsData() {
   if (figma.root.getPluginData('elements')) {
     const elementsData = JSON.parse(figma.root.getPluginData('elements'));
-    console.log('elementsData', elementsData)
     for (const elementId in elementsData) {
       const elementNode = await figma.getNodeByIdAsync(elementId);
+      const { statusBarId, status, userName, datetime } = elementsData[elementId];
+      let statusBarNode = await figma.getNodeByIdAsync(statusBarId);
+
       if (elementNode) {
-        const { statusBarId, status, userName, datetime } = elementsData[elementId];
-        let statusBarNode = await figma.getNodeByIdAsync(statusBarId);
         if (statusBarNode === null) {
           statusBarNode = createStatusBar(status, userName, datetime);
+          changeStatusBarNodePosition(elementNode as SceneNode, statusBarNode);
+          changeStatusBarNodeParent(elementNode as SceneNode, statusBarNode);
         }
 
         pluginState.elements.set(elementNode as SceneNode, {
@@ -87,9 +89,15 @@ async function loadElementsData() {
           userName,
           datetime,
         });
+      } else {
+        if (statusBarNode) {
+          statusBarNode.remove()
+        }
       }
     }
   }
+
+  saveElementsData();
 }
 
 async function loadFonts() {
@@ -114,7 +122,7 @@ function saveElementsData() {
           return [
             key.id,
             {
-              statusBarId: value.node?.id ?? null,
+              statusBarId: value.node.id,
               status: value.status,
               userName: value.userName,
               datetime: value.datetime,
@@ -161,40 +169,33 @@ function onNodeChange(event: NodeChangeEvent) {
     const isNodeWithStatusChanged = Array.from(pluginState.elements.keys())
       .map((item) => item.id)
       .includes(change.node.id);
-    const isStatusBarChanged = Array.from(pluginState.elements.values())
-      .map((item) => item.node.id)
-      .includes(change.node.id);
 
     if (isNodeWithStatusChanged) {
+      let elementNode;
+      let statusBarNode;
       switch (change.type) {
         case 'PROPERTY_CHANGE':
+          elementNode = change.node as SceneNode
+          statusBarNode = pluginState.elements.get(elementNode)?.node
           const isPositionChanged = change.properties.reduce((acc, item) => {
             return acc || item === 'x' || item === 'y';
           }, false);
           const isParentChanged = change.properties.includes('parent');
 
           if (isPositionChanged) {
-            // changeStatusBarNodePosition();
+            changeStatusBarNodePosition(elementNode, statusBarNode);
           }
           if (isParentChanged) {
-            // changeStatusBarNodeParent();
-            // onSelectionChange();
+            changeStatusBarNodeParent(elementNode, statusBarNode);
+            onSelectionChange();
           }
           break;
 
         case 'DELETE':
-          // remove statusBar
-          // remove node from plugin state Map
-          break;
-      }
-    } else if (isStatusBarChanged) {
-      switch (change.type) {
-        case 'PROPERTY_CHANGE':
-          // position statusBar back
-          break;
-
-        case 'DELETE':
-          // create statusBar back
+          elementNode = change.node as SceneNode
+          statusBarNode = pluginState.elements.get(elementNode)?.node
+          statusBarNode.remove()
+          pluginState.elements.delete(elementNode)
           break;
       }
     }
@@ -270,19 +271,19 @@ async function handleUIMessage(msg: any) {
         if (pluginState.elements.has(element)) {
           pluginState.elements.get(element)?.node.remove();
           pluginState.elements.delete(element);
-          updateStatusesCount();
-          saveElementsData();
         }
       }
+      updateStatusesCount();
+      saveElementsData();
       break;
 
     case 'removeAllStatuses':
       for (const element of pluginState.elements.keys()) {
         pluginState.elements.get(element)?.node.remove();
         pluginState.elements.delete(element);
-        updateStatusesCount();
-        saveElementsData();
       }
+      updateStatusesCount();
+      saveElementsData();
       break;
 
     case 'removeCustomStatus':
@@ -309,9 +310,9 @@ async function handleUIMessage(msg: any) {
         for (const element of elementsWithRemovingStatus.keys()) {
           pluginState.elements.get(element)?.node.remove();
           pluginState.elements.delete(element);
-          updateStatusesCount();
-          saveElementsData();
         }
+        updateStatusesCount();
+        saveElementsData();
         return;
       }
 
@@ -361,9 +362,10 @@ async function handleUIMessage(msg: any) {
           if (!statusBarNode) return;
           statusBarNode = statusBarGroup;
 
-          saveElementsData();
+          
         }
       }
+      saveElementsData();
       break;
   }
 }
