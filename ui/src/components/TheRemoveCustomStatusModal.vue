@@ -11,7 +11,7 @@
         class="the-remove-custom-status-modal__frame-wrapper"
         v-for="frame of framesWithRemovingStatus"
         :key="frame.id"
-        @click="goToFrame(frame.id)"
+        @click="goToElement(frame.id)"
       >
         <div class="icon icon--frame"></div>
         <span class="type">{{ frame.name }}</span>
@@ -38,8 +38,8 @@
       removeCustomStatus() {
         this.$emit('removeCustomStatus')
       },
-      goToFrame(id) {
-        parent.postMessage({ pluginMessage: { type: "goToFrame", data: {id} } }, "*")
+      goToElement(id) {
+        parent.postMessage({ pluginMessage: { type: "goToElement", data: {id} } }, "*")
       }
     }
   }

@@ -60,6 +60,7 @@ async function loadPluginData() {
   await loadOnboardingData();
   await loadElementsData();
   loadCustomStatusesData();
+  loadValidNodeTypesData();
 }
 
 async function loadOnboardingData() {
@@ -73,7 +74,8 @@ async function loadElementsData() {
     const elementsData = JSON.parse(figma.root.getPluginData('elements'));
     for (const elementId in elementsData) {
       const elementNode = await figma.getNodeByIdAsync(elementId);
-      const { statusBarId, status, userName, datetime } = elementsData[elementId];
+      const { statusBarId, status, userName, datetime } =
+        elementsData[elementId];
       let statusBarNode = await figma.getNodeByIdAsync(statusBarId);
 
       if (elementNode) {
@@ -91,7 +93,7 @@ async function loadElementsData() {
         });
       } else {
         if (statusBarNode) {
-          statusBarNode.remove()
+          statusBarNode.remove();
         }
       }
     }
@@ -109,6 +111,14 @@ function loadCustomStatusesData() {
   if (figma.root.getPluginData('custom_statuses')) {
     pluginState.customStatuses = JSON.parse(
       figma.root.getPluginData('custom_statuses')
+    );
+  }
+}
+
+function loadValidNodeTypesData() {
+  if (figma.root.getPluginData('valid_node_types')) {
+    pluginState.validNodeTypes = JSON.parse(
+      figma.root.getPluginData('valid_node_types')
     );
   }
 }
@@ -145,7 +155,9 @@ function onSelectionChange() {
 
   sendUIMessage({
     type: 'onSelectionChange',
-    data: { atLeastOneValidElementSelected: !!pluginState.validSelection.length },
+    data: {
+      atLeastOneValidElementSelected: !!pluginState.validSelection.length,
+    },
   });
 }
 
@@ -171,12 +183,11 @@ function onNodeChange(event: NodeChangeEvent) {
       .includes(change.node.id);
 
     if (isNodeWithStatusChanged) {
-      let elementNode;
-      let statusBarNode;
       switch (change.type) {
         case 'PROPERTY_CHANGE':
-          elementNode = change.node as SceneNode
-          statusBarNode = pluginState.elements.get(elementNode)?.node
+          const elementNode = change.node as SceneNode;
+          const statusBarNode = pluginState.elements.get(elementNode)
+            ?.node as GroupNode;
           const isPositionChanged = change.properties.reduce((acc, item) => {
             return acc || item === 'x' || item === 'y';
           }, false);
@@ -188,15 +199,13 @@ function onNodeChange(event: NodeChangeEvent) {
           if (isParentChanged) {
             changeStatusBarNodeParent(elementNode, statusBarNode);
             onSelectionChange();
+            updateStatusesCount();
           }
           break;
 
-        case 'DELETE':
-          elementNode = change.node as SceneNode
-          statusBarNode = pluginState.elements.get(elementNode)?.node
-          statusBarNode.remove()
-          pluginState.elements.delete(elementNode)
-          break;
+        // case 'DELETE':
+
+        //   break;
       }
     }
   }
@@ -252,9 +261,8 @@ async function handleUIMessage(msg: any) {
           datetime: datetime,
         });
 
-        saveElementsData();
       }
-
+      saveElementsData();
       updateStatusesCount();
       break;
 
@@ -263,6 +271,14 @@ async function handleUIMessage(msg: any) {
       figma.root.setPluginData(
         'custom_statuses',
         JSON.stringify(pluginState.customStatuses)
+      );
+      break;
+
+    case 'saveValidNodeTypes':
+      pluginState.validNodeTypes = msg.data;
+      figma.root.setPluginData(
+        'valid_node_types',
+        JSON.stringify(pluginState.validNodeTypes)
       );
       break;
 
@@ -293,6 +309,7 @@ async function handleUIMessage(msg: any) {
           elementsWithRemovingStatus.set(element, statusBar);
         }
       }
+      console.log(elementsWithRemovingStatus.size)
 
       if (!elementsWithRemovingStatus.size) {
         sendUIMessage({
@@ -317,7 +334,7 @@ async function handleUIMessage(msg: any) {
       }
 
       sendUIMessage({
-        type: 'sendElementsWithRemovingStatus',
+        type: 'setElementsWithRemovingStatus',
         data: Array.from(elementsWithRemovingStatus.keys()).map((item) => {
           return {
             id: item.id,
@@ -347,22 +364,31 @@ async function handleUIMessage(msg: any) {
 
     case 'update':
       for (const [element, statusBar] of pluginState.elements.entries()) {
-        if (statusBar.node) {
-          // positionStatusBarGroup(statusBar.node, element);
+        const elementNode = await figma.getNodeByIdAsync(element.id);
+        const { status, userName, datetime } = statusBar;
+        const statusBarId = statusBar.node.id;
+        let statusBarNode = await figma.getNodeByIdAsync(statusBarId);
+
+        if (elementNode) {
+          if (statusBarNode === null) {
+            statusBarNode = createStatusBar(status, userName, datetime);
+            changeStatusBarNodePosition(
+              elementNode as SceneNode,
+              statusBarNode
+            );
+            changeStatusBarNodeParent(elementNode as SceneNode, statusBarNode);
+          }
+
+          pluginState.elements.set(elementNode as SceneNode, {
+            node: statusBarNode as SceneNode,
+            status,
+            userName,
+            datetime,
+          });
         } else {
-          const statusBarGroup = createStatusBar(
-            statusBar.status,
-            statusBar.userName,
-            statusBar.datetime
-          );
-
-          // positionStatusBarGroup(statusBarGroup, element);
-
-          let statusBarNode = pluginState.elements.get(element)?.node;
-          if (!statusBarNode) return;
-          statusBarNode = statusBarGroup;
-
-          
+          if (statusBarNode) {
+            statusBarNode.remove();
+          }
         }
       }
       saveElementsData();
@@ -393,7 +419,9 @@ function createStatusBar(
 ): GroupNode {
   const statusBarElement = figma.createFrame();
   statusBarElement.resize(1, 36);
-  statusBarElement.fills = [{ type: 'SOLID', color: figma.util.rgb(background) }];
+  statusBarElement.fills = [
+    { type: 'SOLID', color: figma.util.rgb(background) },
+  ];
   const effects: DropShadowEffect[] = [
     {
       type: 'DROP_SHADOW',
@@ -495,7 +523,11 @@ function changeStatusBarNodePosition(
 }
 
 function isNodeValid(node: SceneNode): boolean {
-  return hasValidParent(node) && hasValidType(node, pluginState.validNodeTypes) && node.getPluginData('type') !== 'ELEMENT STATUS';
+  return (
+    hasValidParent(node) &&
+    hasValidType(node, pluginState.validNodeTypes) &&
+    node.getPluginData('type') !== 'ELEMENT STATUS'
+  );
 }
 
 function hasValidParent(node: SceneNode): boolean {
@@ -545,8 +577,18 @@ function getFormattedDatetime(): string {
   const now = new Date();
 
   const monthNames: string[] = [
-    "January", "February", "March", "April", "May", "June", "July",
-    "August", "September", "October", "November", "December"
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   function padZero(number: number): string {

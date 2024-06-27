@@ -31,6 +31,7 @@ async function loadPluginData() {
     await loadOnboardingData();
     await loadElementsData();
     loadCustomStatusesData();
+    loadValidNodeTypesData();
 }
 async function loadOnboardingData() {
     const showOnboarding = await figma.clientStorage.getAsync('show_onboarding');
@@ -75,6 +76,11 @@ function loadCustomStatusesData() {
         pluginState.customStatuses = JSON.parse(figma.root.getPluginData('custom_statuses'));
     }
 }
+function loadValidNodeTypesData() {
+    if (figma.root.getPluginData('valid_node_types')) {
+        pluginState.validNodeTypes = JSON.parse(figma.root.getPluginData('valid_node_types'));
+    }
+}
 function saveElementsData() {
     figma.root.setPluginData('elements', JSON.stringify(Object.fromEntries(Array.from(pluginState.elements.entries()).map(([key, value]) => {
         return [
@@ -95,7 +101,9 @@ function onSelectionChange() {
     pluginState.validSelection = figma.currentPage.selection.filter((item) => isNodeValid(item));
     sendUIMessage({
         type: 'onSelectionChange',
-        data: { atLeastOneValidElementSelected: !!pluginState.validSelection.length },
+        data: {
+            atLeastOneValidElementSelected: !!pluginState.validSelection.length,
+        },
     });
 }
 function updateStatusesCount() {
@@ -114,18 +122,16 @@ function updateStatusesCount() {
     sendUIMessage({ type: 'updateStatusesCount', data: { statusesCount } });
 }
 function onNodeChange(event) {
-    var _a, _b;
+    var _a;
     for (const change of event.nodeChanges) {
         const isNodeWithStatusChanged = Array.from(pluginState.elements.keys())
             .map((item) => item.id)
             .includes(change.node.id);
         if (isNodeWithStatusChanged) {
-            let elementNode;
-            let statusBarNode;
             switch (change.type) {
                 case 'PROPERTY_CHANGE':
-                    elementNode = change.node;
-                    statusBarNode = (_a = pluginState.elements.get(elementNode)) === null || _a === void 0 ? void 0 : _a.node;
+                    const elementNode = change.node;
+                    const statusBarNode = (_a = pluginState.elements.get(elementNode)) === null || _a === void 0 ? void 0 : _a.node;
                     const isPositionChanged = change.properties.reduce((acc, item) => {
                         return acc || item === 'x' || item === 'y';
                     }, false);
@@ -136,14 +142,11 @@ function onNodeChange(event) {
                     if (isParentChanged) {
                         changeStatusBarNodeParent(elementNode, statusBarNode);
                         onSelectionChange();
+                        updateStatusesCount();
                     }
                     break;
-                case 'DELETE':
-                    elementNode = change.node;
-                    statusBarNode = (_b = pluginState.elements.get(elementNode)) === null || _b === void 0 ? void 0 : _b.node;
-                    statusBarNode.remove();
-                    pluginState.elements.delete(elementNode);
-                    break;
+                // case 'DELETE':
+                //   break;
             }
         }
     }
@@ -160,7 +163,7 @@ function setupEventListeners() {
     });
 }
 async function handleUIMessage(msg) {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f;
     switch (msg.type) {
         case 'closeOnboarding':
             figma.clientStorage.setAsync('show_onboarding', false);
@@ -188,13 +191,17 @@ async function handleUIMessage(msg) {
                     userName: userName,
                     datetime: datetime,
                 });
-                saveElementsData();
             }
+            saveElementsData();
             updateStatusesCount();
             break;
         case 'saveCustomStatuses':
             pluginState.customStatuses = msg.data;
             figma.root.setPluginData('custom_statuses', JSON.stringify(pluginState.customStatuses));
+            break;
+        case 'saveValidNodeTypes':
+            pluginState.validNodeTypes = msg.data;
+            figma.root.setPluginData('valid_node_types', JSON.stringify(pluginState.validNodeTypes));
             break;
         case 'removeStatuses':
             for (const element of pluginState.validSelection) {
@@ -221,6 +228,7 @@ async function handleUIMessage(msg) {
                     elementsWithRemovingStatus.set(element, statusBar);
                 }
             }
+            console.log(elementsWithRemovingStatus.size);
             if (!elementsWithRemovingStatus.size) {
                 sendUIMessage({
                     type: 'removeCustomStatus',
@@ -242,7 +250,7 @@ async function handleUIMessage(msg) {
                 return;
             }
             sendUIMessage({
-                type: 'sendElementsWithRemovingStatus',
+                type: 'setElementsWithRemovingStatus',
                 data: Array.from(elementsWithRemovingStatus.keys()).map((item) => {
                     return {
                         id: item.id,
@@ -269,16 +277,27 @@ async function handleUIMessage(msg) {
             break;
         case 'update':
             for (const [element, statusBar] of pluginState.elements.entries()) {
-                if (statusBar.node) {
-                    // positionStatusBarGroup(statusBar.node, element);
+                const elementNode = await figma.getNodeByIdAsync(element.id);
+                const { status, userName, datetime } = statusBar;
+                const statusBarId = statusBar.node.id;
+                let statusBarNode = await figma.getNodeByIdAsync(statusBarId);
+                if (elementNode) {
+                    if (statusBarNode === null) {
+                        statusBarNode = createStatusBar(status, userName, datetime);
+                        changeStatusBarNodePosition(elementNode, statusBarNode);
+                        changeStatusBarNodeParent(elementNode, statusBarNode);
+                    }
+                    pluginState.elements.set(elementNode, {
+                        node: statusBarNode,
+                        status,
+                        userName,
+                        datetime,
+                    });
                 }
                 else {
-                    const statusBarGroup = createStatusBar(statusBar.status, statusBar.userName, statusBar.datetime);
-                    // positionStatusBarGroup(statusBarGroup, element);
-                    let statusBarNode = (_g = pluginState.elements.get(element)) === null || _g === void 0 ? void 0 : _g.node;
-                    if (!statusBarNode)
-                        return;
-                    statusBarNode = statusBarGroup;
+                    if (statusBarNode) {
+                        statusBarNode.remove();
+                    }
                 }
             }
             saveElementsData();
@@ -294,7 +313,9 @@ function cleanup() {
 function createStatusBar(status, userName, datetime, background = '#FFFFFF', color = '#777777', shadow = '#7C7C7C26') {
     const statusBarElement = figma.createFrame();
     statusBarElement.resize(1, 36);
-    statusBarElement.fills = [{ type: 'SOLID', color: figma.util.rgb(background) }];
+    statusBarElement.fills = [
+        { type: 'SOLID', color: figma.util.rgb(background) },
+    ];
     const effects = [
         {
             type: 'DROP_SHADOW',
@@ -377,7 +398,9 @@ function changeStatusBarNodePosition(mainNode, attachedNode) {
     attachedNode.y = mainNode.y - 60;
 }
 function isNodeValid(node) {
-    return hasValidParent(node) && hasValidType(node, pluginState.validNodeTypes) && node.getPluginData('type') !== 'ELEMENT STATUS';
+    return (hasValidParent(node) &&
+        hasValidType(node, pluginState.validNodeTypes) &&
+        node.getPluginData('type') !== 'ELEMENT STATUS');
 }
 function hasValidParent(node) {
     var _a, _b, _c, _d, _e, _f, _g;
@@ -422,8 +445,18 @@ function svgFill(node, color) {
 function getFormattedDatetime() {
     const now = new Date();
     const monthNames = [
-        "January", "February", "March", "April", "May", "June", "July",
-        "August", "September", "October", "November", "December"
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
     ];
     function padZero(number) {
         return number < 10 ? '0' + number : number.toString();

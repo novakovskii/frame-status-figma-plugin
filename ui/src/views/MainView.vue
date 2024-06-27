@@ -120,7 +120,7 @@
         let messageType = e.data.pluginMessage?.type
         let messageData = e.data.pluginMessage?.data
         switch (messageType) {
-          case 'sendFramesWithRemovingStatus':
+          case 'setElementsWithRemovingStatus':
             // this.stateStore.setFramesWithRemovingStatus(messageData)
             this.showRemoveCustomStatusModal = true
             this.framesWithRemovingStatus = messageData
