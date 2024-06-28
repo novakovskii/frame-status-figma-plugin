@@ -3,8 +3,12 @@ interface PluginState {
   validNodeTypes: string[];
   validSelection: SceneNode[];
   customStatuses: Status[];
-  elements: Map<SceneNode, StatusBar>;
+  elementsToStatuses: Map<SceneNode, SceneNode>;
 }
+if (figma.root.getPluginData('elements_to_statuses')) {
+  console.log(1, JSON.parse(figma.root.getPluginData('elements_to_statuses')))
+}
+
 
 interface Status {
   name: string;
@@ -14,19 +18,12 @@ interface Status {
   icon: string;
 }
 
-interface StatusBar {
-  node: SceneNode;
-  status: Status;
-  userName: string;
-  datetime: string;
-}
-
 const pluginState: PluginState = {
   showOnboarding: true,
   validNodeTypes: [],
   validSelection: [],
   customStatuses: [],
-  elements: new Map(),
+  elementsToStatuses: new Map()
 };
 
 initializePlugin();
@@ -47,7 +44,7 @@ async function initializePlugin() {
   });
 
   onSelectionChange();
-  updateStatusesCount();
+  
   setupEventListeners();
 }
 
@@ -58,48 +55,15 @@ function addRelaunchButton() {
 async function loadPluginData() {
   await loadFonts();
   await loadOnboardingData();
-  await loadElementsData();
   loadCustomStatusesData();
   loadValidNodeTypesData();
+  await loadElementsToStatusesData();
 }
 
 async function loadOnboardingData() {
   const showOnboarding = await figma.clientStorage.getAsync('show_onboarding');
   pluginState.showOnboarding =
     showOnboarding === undefined ? true : showOnboarding;
-}
-
-async function loadElementsData() {
-  if (figma.root.getPluginData('elements')) {
-    const elementsData = JSON.parse(figma.root.getPluginData('elements'));
-    for (const elementId in elementsData) {
-      const elementNode = await figma.getNodeByIdAsync(elementId);
-      const { statusBarId, status, userName, datetime } =
-        elementsData[elementId];
-      let statusBarNode = await figma.getNodeByIdAsync(statusBarId);
-
-      if (elementNode) {
-        if (statusBarNode === null) {
-          statusBarNode = createStatusBar(status, userName, datetime);
-          changeStatusBarNodePosition(elementNode as SceneNode, statusBarNode);
-          changeStatusBarNodeParent(elementNode as SceneNode, statusBarNode);
-        }
-
-        pluginState.elements.set(elementNode as SceneNode, {
-          node: statusBarNode as SceneNode,
-          status,
-          userName,
-          datetime,
-        });
-      } else {
-        if (statusBarNode) {
-          statusBarNode.remove();
-        }
-      }
-    }
-  }
-
-  saveElementsData();
 }
 
 async function loadFonts() {
@@ -123,25 +87,23 @@ function loadValidNodeTypesData() {
   }
 }
 
-function saveElementsData() {
-  figma.root.setPluginData(
-    'elements',
-    JSON.stringify(
-      Object.fromEntries(
-        Array.from(pluginState.elements.entries()).map(([key, value]) => {
-          return [
-            key.id,
-            {
-              statusBarId: value.node.id,
-              status: value.status,
-              userName: value.userName,
-              datetime: value.datetime,
-            },
-          ];
-        })
-      )
-    )
-  );
+async function loadElementsToStatusesData() {
+  if (figma.root.getPluginData('elements_to_statuses')) {
+    const elementsToStatusesData = JSON.parse(figma.root.getPluginData('elements_to_statuses'))
+    for (const [elementId, statusBarId] of elementsToStatusesData) {
+      const elementNode = await figma.getNodeByIdAsync(elementId)
+      const statusBarNode = await figma.getNodeByIdAsync(statusBarId)
+      if (elementNode && statusBarNode) {
+        pluginState.elementsToStatuses.set(elementNode as SceneNode, statusBarNode as SceneNode)
+      }
+    }
+  }
+}
+
+function saveElementsToStatusesData() {
+  figma.root.setPluginData('elements_to_statuses', JSON.stringify(
+    Array.from(pluginState.elementsToStatuses.entries()).map(([element, statusBar]) => [element.id, statusBar.id])
+  ));
 }
 
 function createUI() {
@@ -159,18 +121,17 @@ function onSelectionChange() {
       atLeastOneValidElementSelected: !!pluginState.validSelection.length,
     },
   });
+  updateStatusesCount();
 }
 
 function updateStatusesCount() {
   const statusesCount: any = {};
-
   for (const element of pluginState.validSelection) {
-    if (pluginState.elements.has(element)) {
-      const statusId = pluginState.elements.get(element)?.status.id;
-      if (statusId === undefined) continue;
+    const statusId = getStatusBarNodeByElementNode(element)?.getPluginData('status_id');
+    if (statusId) {
       statusesCount[statusId]
-        ? statusesCount[statusId]++
-        : (statusesCount[statusId] = 1);
+      ? statusesCount[statusId]++
+      : (statusesCount[statusId] = 1);
     }
   }
   sendUIMessage({ type: 'updateStatusesCount', data: { statusesCount } });
@@ -178,36 +139,31 @@ function updateStatusesCount() {
 
 function onNodeChange(event: NodeChangeEvent) {
   for (const change of event.nodeChanges) {
-    const isNodeWithStatusChanged = Array.from(pluginState.elements.keys())
-      .map((item) => item.id)
-      .includes(change.node.id);
+    // const isNodeWithStatusChanged = Array.from(pluginState.elements.keys())
+    //   .map((item) => item.id)
+    //   .includes(change.node.id);
 
-    if (isNodeWithStatusChanged) {
-      switch (change.type) {
-        case 'PROPERTY_CHANGE':
-          const elementNode = change.node as SceneNode;
-          const statusBarNode = pluginState.elements.get(elementNode)
-            ?.node as GroupNode;
-          const isPositionChanged = change.properties.reduce((acc, item) => {
-            return acc || item === 'x' || item === 'y';
-          }, false);
-          const isParentChanged = change.properties.includes('parent');
+    // if (isNodeWithStatusChanged) {
+    //   switch (change.type) {
+    //     case 'PROPERTY_CHANGE':
+    //       const elementNode = change.node as SceneNode;
+    //       const statusBarNode = pluginState.elements.get(elementNode)
+    //         ?.node as GroupNode;
+    //       const isPositionChanged = change.properties.reduce((acc, item) => {
+    //         return acc || item === 'x' || item === 'y';
+    //       }, false);
+    //       const isParentChanged = change.properties.includes('parent');
 
-          if (isPositionChanged) {
-            changeStatusBarNodePosition(elementNode, statusBarNode);
-          }
-          if (isParentChanged) {
-            changeStatusBarNodeParent(elementNode, statusBarNode);
-            onSelectionChange();
-            updateStatusesCount();
-          }
-          break;
-
-        // case 'DELETE':
-
-        //   break;
-      }
-    }
+    //       if (isPositionChanged) {
+    //         changeStatusBarNodePosition(elementNode, statusBarNode);
+    //       }
+    //       if (isParentChanged) {
+    //         changeStatusBarNodeParent(elementNode, statusBarNode);
+    //         onSelectionChange();
+    //       }
+    //       break;
+    //   }
+    // }
   }
 }
 
@@ -216,7 +172,6 @@ function setupEventListeners() {
 
   figma.on('selectionchange', () => {
     onSelectionChange();
-    updateStatusesCount();
   });
 
   figma.on('close', cleanup);
@@ -234,9 +189,8 @@ async function handleUIMessage(msg: any) {
 
     case 'setStatus':
       for (const element of pluginState.validSelection) {
-        if (pluginState.elements.has(element)) {
-          pluginState.elements.get(element)?.node.remove();
-        }
+        getStatusBarNodeByElementNode(element)?.remove()
+        
 
         const status = {
           background: msg.data.background,
@@ -249,20 +203,13 @@ async function handleUIMessage(msg: any) {
         const userName = figma.currentUser?.name ?? 'Unidentified user';
         const datetime = getFormattedDatetime();
 
-        const statusBarGroup = createStatusBar(status, userName, datetime);
+        const statusBarNode = createStatusBar(status, userName, datetime);
 
-        changeStatusBarNodePosition(element, statusBarGroup);
-        changeStatusBarNodeParent(element, statusBarGroup);
-
-        pluginState.elements.set(element, {
-          node: statusBarGroup,
-          status: status,
-          userName: userName,
-          datetime: datetime,
-        });
+        pluginState.elementsToStatuses.set(element, statusBarNode);
+        changeStatusBarNodePosition(element, statusBarNode);
+        changeStatusBarNodeParent(element, statusBarNode);
 
       }
-      saveElementsData();
       updateStatusesCount();
       break;
 
@@ -284,115 +231,18 @@ async function handleUIMessage(msg: any) {
 
     case 'removeStatuses':
       for (const element of pluginState.validSelection) {
-        if (pluginState.elements.has(element)) {
-          pluginState.elements.get(element)?.node.remove();
-          pluginState.elements.delete(element);
-        }
+        getStatusBarNodeByElementNode(element)?.remove()
       }
       updateStatusesCount();
-      saveElementsData();
       break;
 
     case 'removeAllStatuses':
-      for (const element of pluginState.elements.keys()) {
-        pluginState.elements.get(element)?.node.remove();
-        pluginState.elements.delete(element);
+      for (const element of pluginState.elementsToStatuses.keys()) {
+        getStatusBarNodeByElementNode(element)?.remove()
       }
       updateStatusesCount();
-      saveElementsData();
       break;
 
-    case 'removeCustomStatus':
-      const elementsWithRemovingStatus = new Map();
-      for (const [element, statusBar] of pluginState.elements.entries()) {
-        if (statusBar.status.id === msg.data.id) {
-          elementsWithRemovingStatus.set(element, statusBar);
-        }
-      }
-      console.log(elementsWithRemovingStatus.size)
-
-      if (!elementsWithRemovingStatus.size) {
-        sendUIMessage({
-          type: 'removeCustomStatus',
-          data: { id: msg.data.id },
-        });
-        return;
-      }
-
-      if (msg.data.force) {
-        sendUIMessage({
-          type: 'removeCustomStatus',
-          data: { id: msg.data.id },
-        });
-        for (const element of elementsWithRemovingStatus.keys()) {
-          pluginState.elements.get(element)?.node.remove();
-          pluginState.elements.delete(element);
-        }
-        updateStatusesCount();
-        saveElementsData();
-        return;
-      }
-
-      sendUIMessage({
-        type: 'setElementsWithRemovingStatus',
-        data: Array.from(elementsWithRemovingStatus.keys()).map((item) => {
-          return {
-            id: item.id,
-            name: item.name,
-          };
-        }),
-      });
-
-      break;
-
-    case 'goToElement':
-      const element = Array.from(pluginState.elements.keys()).find(
-        (item) => item.id === msg.data.id
-      );
-      if (element === undefined) return;
-      const nodePage = getNodePage(element);
-      if (nodePage.id !== figma.currentPage.id) {
-        figma.setCurrentPageAsync(nodePage).then(() => {
-          figma.viewport.scrollAndZoomIntoView([element]);
-          figma.currentPage.selection = [element as SceneNode];
-        });
-      } else {
-        figma.viewport.scrollAndZoomIntoView([element]);
-        figma.currentPage.selection = [element as SceneNode];
-      }
-      break;
-
-    case 'update':
-      for (const [element, statusBar] of pluginState.elements.entries()) {
-        const elementNode = await figma.getNodeByIdAsync(element.id);
-        const { status, userName, datetime } = statusBar;
-        const statusBarId = statusBar.node.id;
-        let statusBarNode = await figma.getNodeByIdAsync(statusBarId);
-
-        if (elementNode) {
-          if (statusBarNode === null) {
-            statusBarNode = createStatusBar(status, userName, datetime);
-            changeStatusBarNodePosition(
-              elementNode as SceneNode,
-              statusBarNode
-            );
-            changeStatusBarNodeParent(elementNode as SceneNode, statusBarNode);
-          }
-
-          pluginState.elements.set(elementNode as SceneNode, {
-            node: statusBarNode as SceneNode,
-            status,
-            userName,
-            datetime,
-          });
-        } else {
-          if (statusBarNode) {
-            statusBarNode.remove();
-          }
-        }
-      }
-      saveElementsData();
-      break;
   }
 }
 
@@ -401,7 +251,7 @@ function sendUIMessage(msg: any) {
 }
 
 function cleanup() {
-  // console.log('Plugin closed');
+  saveElementsToStatusesData();
 }
 
 function createStatusBar(
@@ -410,6 +260,7 @@ function createStatusBar(
     color: string;
     icon: string;
     name: string;
+    id: string;
   },
   userName: string,
   datetime: string,
@@ -489,6 +340,7 @@ function createStatusBar(
   statusBarGroup.name = 'Status';
   statusBarGroup.expanded = false;
   statusBarGroup.setPluginData('type', 'ELEMENT STATUS');
+  statusBarGroup.setPluginData('status_id', status.id);
 
   return statusBarGroup;
 }
@@ -550,9 +402,25 @@ function hasValidType(
   else return validNodeTypes.indexOf(node.type) !== -1;
 }
 
-function getNodePage(node: any): PageNode {
-  if (node.parent?.type === 'PAGE') return node.parent;
-  else return getNodePage(node.parent);
+function isNodeExist(node: BaseNode): boolean {
+  return node.removed === false;
+}
+
+function isNodePairExist(node1: BaseNode, node2: BaseNode): boolean {
+  return isNodeExist(node1) && isNodeExist(node2);
+}
+
+function getStatusBarNodeByElementNode(element: SceneNode): SceneNode | null {
+  if (pluginState.elementsToStatuses.has(element)) {
+    const statusBarNode = pluginState.elementsToStatuses.get(element)
+    if (statusBarNode && isNodeExist(statusBarNode)) {
+      return statusBarNode
+    } else {
+      return null
+    }
+  } else {
+    return null
+  }
 }
 
 function svgFill(node: SceneNode, color: RGB) {
