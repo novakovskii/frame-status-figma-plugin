@@ -1,7 +1,7 @@
 <template>
   <div class="base-status-bar-preview">
     <div class="base-status-bar-preview__status-bar" :style="{'background': background}">
-      <div class="base-status-bar-preview__status-bar-icon-wrapper" v-html="iconsStore.icons[icon]" :style="{'fill': color}"></div>
+      <div class="base-status-bar-preview__status-bar-icon-wrapper" v-html="iconsStore.statusIcons[icon]" :style="{'fill': color}"></div>
       <span class="base-status-bar-preview__status-bar-name type" :style="{'color': color}">{{ name }}</span>
     </div>
   </div>

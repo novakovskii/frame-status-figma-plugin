@@ -31,7 +31,17 @@ export const useStateStore = defineStore('state', {
       { id: 7, color: '#3E4784', background: '#D5D9EB' },
       { id: 8, color: '', background: '', custom: true}
     ],
-    // framesWithRemovingStatus: []
+    validNodeTypes: [
+      { name: 'boolean', types: ['BOOLEAN_OPERATION'], enabled: true },
+      { name: 'component', types: ['COMPONENT', 'COMPONENT_SET', 'INSTANCE'], enabled: true },
+      { name: 'frame', types: ['FRAME'], enabled: true },
+      { name: 'group', types: ['GROUP'], enabled: true },
+      { name: 'section', types: ['SECTION'], enabled: true },
+      { name: 'shapes', types: ['ELLIPSE', 'LINE', 'POLYGON', 'RECTANGLE', 'STAR' ], enabled: true },
+      { name: 'slice', types: ['SLICE'], enabled: true },
+      { name: 'text', types: ['TEXT'], enabled: true },
+      { name: 'vector', types: ['VECTOR'], enabled: true }
+    ]
   }),
   actions: {
     closeOnboarding() {
@@ -72,8 +82,13 @@ export const useStateStore = defineStore('state', {
     setStatusesCount(value) {
       this.statusesCount = value
     },
-    // setFramesWithRemovingStatus(value) {
-    //   this.framesWithRemovingStatus = value
-    // }
+    setValidNodeTypesFromValues(values) {
+      values.forEach((value, idx) => {
+        this.validNodeTypes[idx].enabled = value;
+      })
+    },
+    setValidNodeTypes(value) {
+      this.validNodeTypes = value
+    }
   },
 })

@@ -1,5 +1,5 @@
 <template>
-  <div class="the-search border-bottom">
+  <div class="the-search">
     <div class="the-search__icon icon icon--search"></div>
     <input
       class="type"
@@ -31,6 +31,7 @@
     align-items: center;
     min-height: 40px;
     position: relative;
+    flex: 1;
 
     &__icon {
       position: absolute;

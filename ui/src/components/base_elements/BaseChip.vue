@@ -8,7 +8,7 @@
     }"
     @click="setStatus"
   >
-    <div class="base-chip__icon-wrapper" v-html="iconsStore.icons[icon]" :style="{'fill': color}"></div>
+    <div class="base-chip__icon-wrapper" v-html="iconsStore.statusIcons[icon]" :style="{'fill': color}"></div>
     <div class="base-chip__name">{{ name }}</div>
     <div v-if="count > 0" class="base-chip__count" :class="{'base-chip__count--with-padding': count > 9}">
       {{count}}
@@ -17,7 +17,7 @@
       v-if="closeable" 
       ref="closeButton"
       class="base-chip__close-button icon-button" 
-      v-html="iconsStore.icons.close" 
+      v-html="iconsStore.statusIcons.close" 
       :style="{'fill': color}"
       @click.stop="remove"
     />
@@ -72,7 +72,7 @@
         if (e.target === this.$refs.closeButton) {
           return
         }
-        parent.postMessage({ pluginMessage: { type: "setStatus", data: { name: this.name, id: this.id, color: this.color, background: this.background, icon: this.iconsStore.icons[this.icon] } } }, "*")
+        parent.postMessage({ pluginMessage: { type: "setStatus", data: { name: this.name, id: this.id, color: this.color, background: this.background, icon: this.iconsStore.statusIcons[this.icon] } } }, "*")
       },
       remove() {
         this.$emit('remove', this.id)

@@ -1,5 +1,12 @@
 <template>
-  <TheSearch v-model="searchValue" />
+  <TheHeader class="the-header--main border-bottom">
+    <TheSearch v-model="searchValue" />
+    <div class="icon-button__wrapper border-left">
+      <div class="icon-button" @click="$router.push('/settings')">
+        <div class="icon icon--settings"></div>
+      </div>
+    </div>
+  </TheHeader>
   <TheMain class="the-main--main">
     <div class="the-main--main__section-title section-title">Default statuses</div>
     <BaseChipContainer :empty="statusesDefaultFiltered.length === 0">
@@ -73,6 +80,7 @@
 </template>
 
 <script>
+  import TheHeader from '../components/TheHeader.vue'
   import TheSearch from '../components/TheSearch.vue'
   import TheMain from '../components/TheMain.vue'
   import TheFooter from '../components/TheFooter.vue'
@@ -87,6 +95,7 @@
   export default {
     name: 'MainView',
     components: {
+      TheHeader,
       TheSearch,
       TheMain,
       TheFooter,
@@ -147,6 +156,13 @@
 </script>
 
 <style lang="scss">
+  .the-header--main {
+
+    .icon-button__wrapper {
+      padding: 4px;
+    }
+  }
+
   .the-main--main {
     padding: 0 8px 8px;
 

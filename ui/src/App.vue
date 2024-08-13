@@ -38,6 +38,9 @@
           case 'setCustomStatuses':
             this.stateStore.setCustomStatuses(messageData)
           break
+          case 'setValidNodeTypes':
+            this.stateStore.setValidNodeTypes(messageData)
+          break
           case 'removeCustomStatus':
             this.stateStore.removeCustomStatus(messageData.id)
             parent.postMessage({ pluginMessage: { type: "saveCustomStatuses", data: toRaw(this.stateStore.customStatuses) } }, "*")

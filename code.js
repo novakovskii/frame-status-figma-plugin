@@ -19,6 +19,10 @@ async function initializePlugin() {
         type: 'setCustomStatuses',
         data: pluginState.customStatuses,
     });
+    sendUIMessage({
+        type: 'setValidNodeTypes',
+        data: pluginState.validNodeTypes,
+    });
     onSelectionChange();
     setupEventListeners();
 }
@@ -300,21 +304,30 @@ function isNodeValid(node) {
         node.getPluginData('type') !== 'ELEMENT STATUS');
 }
 function hasValidParent(node) {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     const isChildOfPage = ((_a = node.parent) === null || _a === void 0 ? void 0 : _a.type) === 'PAGE';
     const isChildOfSection = ((_b = node.parent) === null || _b === void 0 ? void 0 : _b.type) === 'SECTION';
-    const isChildOfAutolayout = (((_c = node.parent) === null || _c === void 0 ? void 0 : _c.type) === 'COMPONENT' ||
-        ((_d = node.parent) === null || _d === void 0 ? void 0 : _d.type) === 'COMPONENT_SET' ||
-        ((_e = node.parent) === null || _e === void 0 ? void 0 : _e.type) === 'FRAME' ||
-        ((_f = node.parent) === null || _f === void 0 ? void 0 : _f.type) === 'INSTANCE') &&
-        ((_g = node.parent) === null || _g === void 0 ? void 0 : _g.layoutMode) !== 'NONE';
-    return isChildOfPage || isChildOfSection || isChildOfAutolayout;
+    const isChildOfComponentSet = ((_c = node.parent) === null || _c === void 0 ? void 0 : _c.type) === 'COMPONENT_SET';
+    const isChildOfAutolayout = (((_d = node.parent) === null || _d === void 0 ? void 0 : _d.type) === 'COMPONENT' ||
+        ((_e = node.parent) === null || _e === void 0 ? void 0 : _e.type) === 'COMPONENT_SET' ||
+        ((_f = node.parent) === null || _f === void 0 ? void 0 : _f.type) === 'FRAME' ||
+        ((_g = node.parent) === null || _g === void 0 ? void 0 : _g.type) === 'INSTANCE') &&
+        ((_h = node.parent) === null || _h === void 0 ? void 0 : _h.layoutMode) !== 'NONE';
+    return isChildOfPage || isChildOfSection || isChildOfComponentSet || isChildOfAutolayout;
 }
 function hasValidType(node, validNodeTypes) {
-    if (validNodeTypes.length === 0)
+    const rawValidNodeTypes = validNodeTypes.reduce((acc, item) => {
+        if (item.enabled) {
+            for (const type of item.types) {
+                acc.push(type);
+            }
+        }
+        return acc;
+    }, []);
+    console.log(node.type, rawValidNodeTypes);
+    if (!figma.root.getPluginData('valid_node_types'))
         return true;
-    else
-        return validNodeTypes.indexOf(node.type) !== -1;
+    return rawValidNodeTypes.indexOf(node.type) !== -1;
 }
 function svgFill(node, color) {
     if (node.type === 'VECTOR') {

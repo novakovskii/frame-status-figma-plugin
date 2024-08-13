@@ -4,6 +4,7 @@
       class="the-pagination__dot"
       :class="{'the-pagination__dot--active': idx === currentPage}"
       v-for="(page, idx) in pageCount"
+      :key="idx"
     ></div>
   </div>
 </template>

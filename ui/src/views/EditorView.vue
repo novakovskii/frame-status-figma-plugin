@@ -1,4 +1,7 @@
 <template>
+  <TheHeader class="the-header--editor">
+    <template #title>Status editor</template>
+  </TheHeader>
   <BaseStatusBarPreview 
     :name="name"
     :color="color"
@@ -50,7 +53,7 @@
     <div class="the-main--editor__section-title section-title">Icon</div>
     <div class="the-main--editor__icon-picker">
       <div class="the-main--editor__icon-wrapper">
-        <BaseIcon :icon="iconsStore.icons[icon]" />
+        <BaseIcon :icon="iconsStore.statusIcons[icon]" />
         <span class="type">{{ icon }}</span>
       </div>
       <div class="icon-button" @click="showChooseIconModal = true">
@@ -89,6 +92,7 @@
 </template>
 
 <script>
+  import TheHeader from '../components/TheHeader.vue'
   import TheMain from '../components/TheMain.vue'
   import TheFooter from '../components/TheFooter.vue'
   import BaseStatusBarPreview from '../components/base_elements/BaseStatusBarPreview.vue'
@@ -105,6 +109,7 @@
   export default {
     name: 'EditorView',
     components: {
+      TheHeader,
       TheMain,
       TheFooter,
       BaseStatusBarPreview,

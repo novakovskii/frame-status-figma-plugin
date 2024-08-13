@@ -10,7 +10,7 @@
       :background="background"
       :icon="selectedIcon"
     />
-    <TheSearch v-model="searchValue" />
+    <TheSearch v-model="searchValue" class="border-bottom" />
     <div class="the-choose-icon-modal__icon-container">
       <template v-if="Object.keys(iconsFiltered).length > 0">
         <div 
@@ -64,7 +64,7 @@
     computed: {
       ...mapStores(useIconsStore),
       icons() {
-        return this.iconsStore.icons
+        return this.iconsStore.statusIcons
       },
       iconsFiltered() {
         return Object.keys(this.icons).

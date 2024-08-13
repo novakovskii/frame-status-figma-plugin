@@ -1,6 +1,10 @@
 interface PluginState {
   showOnboarding: boolean;
-  validNodeTypes: string[];
+  validNodeTypes: {
+    name: string;
+    types: string[];
+    enabled: boolean;
+  }[];
   validSelection: SceneNode[];
   customStatuses: Status[];
   elementIdsToStatusBarIds: Map<string, string>
@@ -37,6 +41,10 @@ async function initializePlugin() {
   sendUIMessage({
     type: 'setCustomStatuses',
     data: pluginState.customStatuses,
+  });
+  sendUIMessage({
+    type: 'setValidNodeTypes',
+    data: pluginState.validNodeTypes,
   });
 
   onSelectionChange();
@@ -225,7 +233,7 @@ async function handleUIMessage(msg: any) {
       break;
 
     case 'saveValidNodeTypes':
-      pluginState.validNodeTypes = msg.data;
+      pluginState.validNodeTypes = msg.data
       figma.root.setPluginData(
         'valid_node_types',
         JSON.stringify(pluginState.validNodeTypes)
@@ -411,21 +419,35 @@ function isNodeValid(node: SceneNode): boolean {
 function hasValidParent(node: SceneNode): boolean {
   const isChildOfPage = node.parent?.type === 'PAGE';
   const isChildOfSection = node.parent?.type === 'SECTION';
+  const isChildOfComponentSet = node.parent?.type === 'COMPONENT_SET';
   const isChildOfAutolayout =
     (node.parent?.type === 'COMPONENT' ||
       node.parent?.type === 'COMPONENT_SET' ||
       node.parent?.type === 'FRAME' ||
       node.parent?.type === 'INSTANCE') &&
     node.parent?.layoutMode !== 'NONE';
-  return isChildOfPage || isChildOfSection || isChildOfAutolayout;
+  return isChildOfPage || isChildOfSection || isChildOfComponentSet || isChildOfAutolayout;
 }
 
 function hasValidType(
   node: SceneNode,
-  validNodeTypes: string[] | string
+  validNodeTypes: {
+    name: string;
+    types: string[];
+    enabled: boolean;
+  }[]
 ): boolean {
-  if (validNodeTypes.length === 0) return true;
-  else return validNodeTypes.indexOf(node.type) !== -1;
+  const rawValidNodeTypes = validNodeTypes.reduce((acc, item) => {
+    if (item.enabled) {
+      for (const type of item.types) {
+        acc.push(type)
+      }
+    }
+    return acc
+  }, [] as string[])
+  console.log(node.type, rawValidNodeTypes)
+  if (!figma.root.getPluginData('valid_node_types')) return true
+  return rawValidNodeTypes.indexOf(node.type) !== -1;
 }
 
 function svgFill(node: SceneNode, color: RGB) {

@@ -18,6 +18,14 @@
   border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+.border-left {
+  border-left: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.border-right {
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
 .input__field:not(.input__field:focus) {
   border: 1px solid var(--black1);
 }
